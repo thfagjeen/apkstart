@@ -323,6 +323,27 @@ app.whenReady().then(async () => {
     androidApiUi.options === '34,36' && androidApiUi.hasStatus && androidApiUi.hasDownload && androidApiUi.hasRestart &&
     androidApiUi.label.en === 'Android version' && androidApiUi.label.th === 'เวอร์ชัน Android',
     JSON.stringify(androidApiUi));
+  // 卸载 / 清除数据的确认框、兼容性提示、底部应用计数：英文 / 泰语都不能残留中文
+  const dialogSamples = [
+    '确定卸载「X」？', '应用数据会一并被清除，桌面快捷方式也会被删除。', '清除「Bill」的全部数据？此操作不可撤销。',
+    '确定卸载 ApkStart？', '将取消 .apk 文件关联并移除程序。此操作不可撤销。',
+    'TIGRIS BILLS REMINDER 兼容性提示', '2 个应用', '1 个应用',
+    '此应用要求 Android API 36+，高于当前运行时（API 34），可能无法正常运行。',
+    '可到「设置 → 性能与资源 → 安卓版本」选 Android 16。',
+    '应用图标无法解析（可能是特殊格式的自适应图标），快捷方式暂时使用占位图标。',
+    '应用图标（WebP）解码失败，快捷方式暂时使用占位图标。',
+  ];
+  const dialogOut = await evalJs(`(() => {
+    const before = uiLanguage;
+    const out = {};
+    for (const lang of ['en', 'th']) { uiLanguage = lang; out[lang] = ${JSON.stringify(dialogSamples)}.map((s) => localizedText(s)); }
+    uiLanguage = before;
+    return out;
+  })()`);
+  const leftover = [...dialogOut.en, ...dialogOut.th].filter((s) => /[㐀-鿿]/.test(s));
+  step('确认框 / 兼容性提示 / 应用计数翻成英文与泰语，无中文残留',
+    leftover.length === 0 && dialogOut.en[6] === '2 apps' && dialogOut.en[7] === '1 app' && dialogOut.th[6] === '2 แอป',
+    leftover.length ? leftover.join(' / ') : `${dialogOut.en[0]} | ${dialogOut.th[0]}`);
   // 安装失败的原因由 core/adb.js 生成中文，渲染层要能翻成英文 / 泰语（带「（INSTALL_*）」尾巴）
   const adbMod = require(path.join(__dirname, '..', 'src', 'core', 'adb.js'));
   const installMessages = ['OLDER_SDK', 'NO_MATCHING_ABIS', 'VERSION_DOWNGRADE'].map((c) => adbMod.friendlyInstallError(`Failure [INSTALL_FAILED_${c}]`));

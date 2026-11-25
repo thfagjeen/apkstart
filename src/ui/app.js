@@ -1062,6 +1062,13 @@ const UI_TEXT = {
   "系统镜像就绪": "System image ready",
   "系统镜像下载失败": "System image download failed",
   "开始下载系统镜像": "Started downloading the system image",
+  // —— 补译 5：确认框 / 兼容性提示 ——
+  "应用数据会一并被清除，桌面快捷方式也会被删除。": "The app’s data will also be cleared and its desktop shortcut removed.",
+  "确定卸载 ApkStart？": "Uninstall ApkStart?",
+  "将取消 .apk 文件关联并移除程序。此操作不可撤销。": "This removes the .apk file association and the program. This cannot be undone.",
+  "可到「设置 → 性能与资源 → 安卓版本」选 Android 16。": "You can choose Android 16 under Settings → Performance & Resources → Android version.",
+  "应用图标无法解析（可能是特殊格式的自适应图标），快捷方式暂时使用占位图标。": "The app icon could not be parsed (possibly a special adaptive icon format); the shortcut temporarily uses a placeholder icon.",
+  "应用图标（WebP）解码失败，快捷方式暂时使用占位图标。": "The app icon (WebP) failed to decode; the shortcut temporarily uses a placeholder icon.",
 };
 
 const UI_PHRASES = [
@@ -1297,6 +1304,11 @@ function thaiDynamicText(key) {
   const t = (text) => i18n.translate(text, 'th') || UI_TEXT[text] || text;
   const pk = (x) => (x === '应用' ? 'แอป' : x);
   const rules = [
+    [/^确定卸载「(.+)」？$/, (_m, x) => `ถอนการติดตั้ง “${x}” หรือไม่?`],
+    [/^清除「(.+)」的全部数据？此操作不可撤销。$/, (_m, x) => `ล้างข้อมูลทั้งหมดของ “${x}” หรือไม่? ย้อนกลับไม่ได้`],
+    [/^(.+) 兼容性提示$/, (_m, x) => `ข้อสังเกตความเข้ากันได้ของ ${x}`],
+    [/^(\d+) 个应用$/, (_m, n) => `${n} แอป`],
+    [/^此应用要求 Android API (\d+)\+，高于当前运行时（API (\d+)），可能无法正常运行。$/, (_m, a, b) => `แอปนี้ต้องการ Android API ${a}+ ซึ่งสูงกว่ารันไทม์ปัจจุบัน (API ${b}) อาจทำงานไม่ถูกต้อง`],
     [/^当前使用：Android (\d+)$/, (_m, v) => `ใช้อยู่: Android ${v}`],
     [/^未下载（约 ([\d.]+)GB）$/, (_m, gb) => `ยังไม่ได้ดาวน์โหลด (ประมาณ ${gb} GB)`],
     [/^下载 (Android \d+) 系统镜像（约 ([\d.]+)GB）…$/, (_m, v, gb) => `กำลังดาวน์โหลดอิมเมจระบบ ${v} (ประมาณ ${gb} GB)…`],
@@ -1376,6 +1388,11 @@ function localizedText(source) {
   const tr = (t) => UI_TEXT[t] || t;
   const pk = (x) => (x === '应用' ? 'The app' : x);
   const dynamicPatterns = [
+    [/^确定卸载「(.+)」？$/, (_m, x) => `Uninstall “${x}”?`],
+    [/^清除「(.+)」的全部数据？此操作不可撤销。$/, (_m, x) => `Clear all data of “${x}”? This cannot be undone.`],
+    [/^(.+) 兼容性提示$/, (_m, x) => `${x} compatibility notice`],
+    [/^(\d+) 个应用$/, (_m, n) => `${n} ${n === '1' ? 'app' : 'apps'}`],
+    [/^此应用要求 Android API (\d+)\+，高于当前运行时（API (\d+)），可能无法正常运行。$/, (_m, a, b) => `This app requires Android API ${a}+, which is higher than the current runtime (API ${b}) and may not run correctly.`],
     [/^当前使用：Android (\d+)$/, (_m, v) => `In use: Android ${v}`],
     [/^未下载（约 ([\d.]+)GB）$/, (_m, gb) => `Not downloaded (about ${gb} GB)`],
     [/^下载 (Android \d+) 系统镜像（约 ([\d.]+)GB）…$/, (_m, v, gb) => `Downloading the ${v} system image (about ${gb} GB)…`],
@@ -2181,10 +2198,16 @@ async function createShortcut(pkg) {
   }
 }
 
+/** 危险操作的确认框：走主进程的原生对话框，标题 / 正文 / 按钮都按界面语言翻译 */
+async function askConfirm({ message, detail = '' }) {
+  const r = await confirmLocalized({ type: 'warning', title: 'ApkStart', message, detail });
+  return !!r && r.response === 1;
+}
+
 async function uninstall(pkg) {
   const app = state.apps.find((a) => a.package === pkg);
   if (!app) return;
-  const ok = window.confirm(`确定卸载「${app.label}」？\n\n应用数据会一并被清除，桌面快捷方式也会被删除。`);
+  const ok = await askConfirm({ message: `确定卸载「${app.label}」？`, detail: '应用数据会一并被清除，桌面快捷方式也会被删除。' });
   if (!ok) return;
   try {
     await api.uninstall(pkg);
@@ -2285,7 +2308,7 @@ async function handleMenu(act) {
     case 'keymap': return showKeymapPicker(pkg, app.label);
     case 'reveal': return api.revealApk(pkg);
     case 'clear': {
-      if (!window.confirm(`清除「${app.label}」的全部数据？此操作不可撤销。`)) return;
+      if (!(await askConfirm({ message: `清除「${app.label}」的全部数据？此操作不可撤销。` }))) return;
       try {
         await api.clearData(pkg);
         toast({ title: '数据已清除', body: app.label, type: 'ok' });
@@ -3805,7 +3828,7 @@ function bindSettings() {
 
   // 一键卸载 ApkStart 本体（取消 .apk 关联 + 启动卸载程序；便携版手动删除）
   $('btnUninstall').addEventListener('click', async () => {
-    const ok = window.confirm('确定卸载 ApkStart？\n\n将取消 .apk 文件关联并移除程序。此操作不可撤销。');
+    const ok = await askConfirm({ message: '确定卸载 ApkStart？', detail: '将取消 .apk 文件关联并移除程序。此操作不可撤销。' });
     if (!ok) return;
     const btn = $('btnUninstall');
     btn.disabled = true;

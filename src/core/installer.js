@@ -361,8 +361,12 @@ class Installer {
 
     // 兼容性提示：只有 ARM 原生库时，x86 运行时需要转译层
     const warnings = [];
-    if (meta.minSdk && meta.minSdk > 34) {
-      warnings.push(`此应用要求 Android ${meta.minSdk}+，高于当前运行时，可能无法正常运行。`);
+    // 和当前真正在用的 Android 版本比（设置里选了 Android 16 就是 36），不能写死 34：
+    // 否则在 Android 16 上装 minSdk=36 的应用也会误报「高于当前运行时」。
+    const runtimeApi = Number(this.runtime.provisioner.effectiveApi()) || 34;
+    if (meta.minSdk && meta.minSdk > runtimeApi) {
+      warnings.push(`此应用要求 Android API ${meta.minSdk}+，高于当前运行时（API ${runtimeApi}），可能无法正常运行。`);
+      if (runtimeApi < 36 && meta.minSdk <= 36) warnings.push('可到「设置 → 性能与资源 → 安卓版本」选 Android 16。');
     }
     if (iconFallback === 'placeholder') {
       warnings.push('应用图标无法解析（可能是特殊格式的自适应图标），快捷方式暂时使用占位图标。');

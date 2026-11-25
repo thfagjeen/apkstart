@@ -2988,6 +2988,14 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(names('apkstart36.avd').join() === 'apkstart-arm.avd', '当前用 Android 16 时，apkstart.avd 也不能被清');
   });
 
+  await test('minSdk 兼容性提示按当前 Android 版本比较，不能写死 34；界面不再用 window.confirm', () => {
+    const inst = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'installer.js'), 'utf8');
+    assert(!/meta\.minSdk\s*>\s*34/.test(inst), '不能再写死 minSdk > 34：Android 16 上装 minSdk=36 的应用会误报');
+    assert(/effectiveApi\(\)/.test(inst) && /meta\.minSdk\s*>\s*runtimeApi/.test(inst), '应和当前实际使用的 Android 版本比');
+    const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'app.js'), 'utf8');
+    assert(!/window\.confirm\(/.test(ui), '确认框要用 askConfirm（原生对话框，可翻译），不能用 window.confirm');
+  });
+
   console.log(results.join('\n'));
   console.log(`\n结果：${passed} 通过，${failed} 失败\n`);
 
