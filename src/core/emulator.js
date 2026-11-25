@@ -20,6 +20,12 @@ const drivers = require('./drivers');
 const userdata = require('./userdata');
 
 const AVD_NAME = 'apkstart';
+/**
+ * 每个 Android 版本有自己的 AVD（用户数据与快照不能跨版本混用）：
+ * 老用户的 Android 14 继续用原来的 `apkstart`（数据原样保留，绝不改名），
+ * 更高版本用 `apkstart<API>`（例如 apkstart36）。
+ */
+const avdNameFor = (api) => (Number(api) >= 35 ? `${AVD_NAME}${api}` : AVD_NAME);
 const SNAPSHOT_NAME = 'apkstart';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -113,6 +119,9 @@ class EmulatorEngine {
 
   get serial() { return `emulator-${this.port}`; }
 
+  /** 当前这次要用的 AVD 名：跟着「实际选中的镜像版本」走，而不是跟着设置走 */
+  get avdName() { return avdNameFor(this.imageChoice().api); }
+
   /** emulator.exe 与系统镜像目录（优先用户运行时目录，回退到仓库内 engine/） */
   locate() {
     const p = this.provisioner.paths();
@@ -141,7 +150,7 @@ class EmulatorEngine {
     this.cancelSnapshotSave();
     this._snapSaved = false;
     try {
-      const snapDir = path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`, 'snapshots');
+      const snapDir = path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`, 'snapshots');
       fs.rmSync(snapDir, { recursive: true, force: true });
       return true;
     } catch (_) {
@@ -173,7 +182,7 @@ class EmulatorEngine {
    * 白等几秒。这里按文件大小校验，顺手清掉空壳和旧版遗留的 default_boot（单个 3GB）。
    */
   hasSnapshot() {
-    const base = path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`, 'snapshots', SNAPSHOT_NAME);
+    const base = path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`, 'snapshots', SNAPSHOT_NAME);
     const size = (p) => { try { return fs.statSync(p).size; } catch (_) { return 0; } };
     const pb = size(path.join(base, 'snapshot.pb'));
     // 新版 emulator（37.x）写的是 ram.bin，老版本写 ram.img。
@@ -189,7 +198,7 @@ class EmulatorEngine {
 
   /** 清掉旧版遗留/失败重命名留下的快照目录（default_boot 里的 ram.img 可达 3GB） */
   _cleanLegacySnapshots() {
-    const dir = path.dirname(path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`, 'snapshots', SNAPSHOT_NAME));
+    const dir = path.dirname(path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`, 'snapshots', SNAPSHOT_NAME));
     let names = [];
     try { names = fs.readdirSync(dir); } catch (_) { return; }
     for (const name of names) {
@@ -219,7 +228,7 @@ class EmulatorEngine {
    */
   panelLandscape() {
     try {
-      const avdDir = path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`);
+      const avdDir = path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`);
       const cfg = fs.readFileSync(path.join(avdDir, 'config.ini'), 'utf8');
       const w = Number((/^hw\.lcd\.width=(\d+)$/m.exec(cfg) || [])[1]);
       const h = Number((/^hw\.lcd\.height=(\d+)$/m.exec(cfg) || [])[1]);
@@ -232,7 +241,7 @@ class EmulatorEngine {
 
   async killOrphanProcesses({ onLog = () => {} } = {}) {
     if (process.platform !== 'win32') return 0;
-    const avdDir = path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`);
+    const avdDir = path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`);
 
     // 快速路径（每次冷启动都会走到）：
     //  - 没有 .lock → 不可能有活着的 emulator 占着这个 AVD，直接返回；
@@ -396,7 +405,7 @@ class EmulatorEngine {
   } = {}) {
     const p = this.provisioner.ensureDirs();
     const home = p.avdHome;
-    const avdDir = path.join(home, `${AVD_NAME}.avd`);
+    const avdDir = path.join(home, `${this.avdName}.avd`);
     fs.mkdirSync(avdDir, { recursive: true });
     this.clearLocks(avdDir);
 
@@ -410,7 +419,7 @@ class EmulatorEngine {
     const tagDisplay = choice.compat ? 'Google Play (ARM 兼容)' : 'AOSP';
 
     fs.writeFileSync(
-      path.join(home, `${AVD_NAME}.ini`),
+      path.join(home, `${this.avdName}.ini`),
       `avd.ini.encoding=UTF-8\npath=${avdDir.replace(/\\/g, '/')}\ntarget=android-${api}\n`,
     );
 
@@ -461,7 +470,7 @@ class EmulatorEngine {
       : choice.abi === 'armeabi-v7a' ? 'arm' : choice.abi;
 
     const cfg = [
-      `AvdId=${AVD_NAME}`,
+      `AvdId=${this.avdName}`,
       'avd.ini.displayname=ApkStart',
       'avd.ini.encoding=UTF-8',
       `abi.type=${choice.abi}`,
@@ -511,7 +520,7 @@ class EmulatorEngine {
     const data = this.ensureDataPartition(avdDir, dataMB);
 
     return {
-      home, avdDir, ini: path.join(home, `${AVD_NAME}.ini`), image: choice,
+      home, avdDir, ini: path.join(home, `${this.avdName}.ini`), image: choice,
       wipePending: this.wipePending, screen, data,
     };
   }
@@ -647,7 +656,7 @@ class EmulatorEngine {
     if (drvGpu) gpu = drvGpu;
     if (eff && eff.forceTcg) accel = 'off';
     const args = [
-      '-avd', AVD_NAME,
+      '-avd', this.avdName,
       '-port', String(port),
       // 音频：-no-audio 会连麦克风一起关掉（整个音频子系统都停）。
       // 只有「声音」和「麦克风」都显式关闭时才传它省 CPU；
@@ -815,7 +824,7 @@ class EmulatorEngine {
 
   /** 当前 /data 镜像的实际情况（设置页展示用，不启动安卓也能取） */
   dataInfo() {
-    const dir = path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`);
+    const dir = path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`);
     const img = path.join(dir, 'userdata-qemu.img');
     let bytes = 0;
     try { bytes = fs.statSync(img).size; } catch (_) { /* 还没建 */ }
@@ -853,7 +862,7 @@ class EmulatorEngine {
    *    不能再像以前那样返回成功 —— 用户会以为扩好了，装 50GB 游戏依旧半路失败。
    */
   resizeDataPartition(dataMB) {
-    const dir = path.join(this.provisioner.paths().avdHome, `${AVD_NAME}.avd`);
+    const dir = path.join(this.provisioner.paths().avdHome, `${this.avdName}.avd`);
     const img = path.join(dir, 'userdata-qemu.img');
     const wantGB = Math.max(1, Math.round(Number(dataMB || 0) / 1024));
     if (this._hasDataOverlay(img)) {
@@ -894,7 +903,7 @@ class EmulatorEngine {
     return new Promise((resolve) => {
       execFile('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
-        '-File', script, '-Avd', AVD_NAME, '-Level', level,
+        '-File', script, '-Avd', this.avdName, '-Level', level,
       ], { windowsHide: true, timeout: 15000 }, (_err, out) => {
         const m = /CHANGED=(\d+)/.exec(String(out || ''));
         resolve(m ? Number(m[1]) : 0);
@@ -1696,4 +1705,4 @@ class EmulatorEngine {
   }
 }
 
-module.exports = { EmulatorEngine, AVD_NAME, SNAPSHOT_NAME };
+module.exports = { EmulatorEngine, AVD_NAME, avdNameFor, SNAPSHOT_NAME };

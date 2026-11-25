@@ -59,7 +59,7 @@ function friendlyInstallError(raw) {
       '安装失败：这个应用只提供 ARM 原生库（多数国产应用如此），'
       + '当前系统镜像没有 ARM 转译层。ApkStart 会自动切换到内置新版翻译层的兼容镜像并重试。',
     INSTALL_FAILED_OLDER_SDK:
-      '安装失败：应用要求的 Android 版本高于当前运行时（需更高系统镜像）。',
+      '安装失败：应用要求的 Android 版本高于当前运行时。可到「设置 → 性能与资源 → 安卓版本」选 Android 16（需先下载约 1.9GB 镜像）。',
     INSTALL_PARSE_FAILED_NO_CERTIFICATES:
       '安装失败：APK 没有有效签名，无法安装。',
     INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES:

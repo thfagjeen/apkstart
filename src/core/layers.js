@@ -80,7 +80,9 @@ function analyze(root, { keepAvd = 'apkstart.avd', aggressive = false, keepSnaps
   const avdHome = path.join(root, 'avd');
   if (exists(avdHome)) {
     for (const e of fs.readdirSync(avdHome, { withFileTypes: true })) {
-      if (!e.isDirectory() || !e.name.endsWith('.avd') || e.name === keepAvd) continue;
+      // apkstart.avd（Android 14）与 apkstart36.avd 之类（更高 Android 版本）都是产品自己的 AVD，
+      // 里面是用户已装的应用与数据，绝不能当成「非活动 AVD」回收。只清测试期遗留的其它名字。
+      if (!e.isDirectory() || !e.name.endsWith('.avd') || e.name === keepAvd || /^apkstart\d*\.avd$/.test(e.name)) continue;
       add(path.join(avdHome, e.name), dirSize(path.join(avdHome, e.name)),
         '非活动 AVD（含 8-16GB 的旧用户数据镜像）', 'dir');
     }

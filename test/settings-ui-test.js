@@ -304,6 +304,25 @@ app.whenReady().then(async () => {
     `${localizationBehavior.availableLanguages.join(', ')} / ${JSON.stringify(localizationBehavior.spanishUi)}`);
   const thai = await evalJs(`({ title: apkstartI18n.translate('设置', 'th'), plain: (() => { const before = uiLanguage; uiLanguage = 'th'; const out = localizedText('停止运行时'); uiLanguage = before; return out; })() })`);
   step('泰语目录可用（设置 / 停止运行时）', thai.title === 'การตั้งค่า' && thai.plain === 'หยุดรันไทม์', JSON.stringify(thai));
+  // 设置页「安卓版本」：14 / 16 两个选项、状态与按钮元素都在，标签有英文 / 泰语
+  const androidApiUi = await evalJs(`(() => {
+    const sel = document.getElementById('setAndroidApi');
+    const before = uiLanguage;
+    const label = {};
+    for (const l of ['en', 'th']) { uiLanguage = l; label[l] = localizedText('安卓版本'); }
+    uiLanguage = before;
+    return {
+      options: sel ? [...sel.options].map((o) => o.value).join(',') : '',
+      hasStatus: !!document.getElementById('androidApiStatus'),
+      hasDownload: !!document.getElementById('btnInstallAndroid16'),
+      hasRestart: !!document.getElementById('btnApplyAndroidApi'),
+      label,
+    };
+  })()`);
+  step('设置页有「安卓版本」（14 / 16）与下载、重启按钮，标签有英文 / 泰语',
+    androidApiUi.options === '34,36' && androidApiUi.hasStatus && androidApiUi.hasDownload && androidApiUi.hasRestart &&
+    androidApiUi.label.en === 'Android version' && androidApiUi.label.th === 'เวอร์ชัน Android',
+    JSON.stringify(androidApiUi));
   // 安装失败的原因由 core/adb.js 生成中文，渲染层要能翻成英文 / 泰语（带「（INSTALL_*）」尾巴）
   const adbMod = require(path.join(__dirname, '..', 'src', 'core', 'adb.js'));
   const installMessages = ['OLDER_SDK', 'NO_MATCHING_ABIS', 'VERSION_DOWNGRADE'].map((c) => adbMod.friendlyInstallError(`Failure [INSTALL_FAILED_${c}]`));

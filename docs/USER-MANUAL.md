@@ -277,7 +277,7 @@ ApkStart 会把英文原始错误翻译成中文。对照下表处理：
 | 错误码 | 含义 | 怎么办 |
 |---|---|---|
 | `INSTALL_FAILED_NO_MATCHING_ABIS` | 应用只提供 ARM 库，当前镜像没有 ARM 转译层 | **通常自动处理**：ApkStart 切换兼容镜像并重试。详见 [6.3](#63-系统镜像没有-arm-转译层--arm-应用装不上或闪退) |
-| `INSTALL_FAILED_OLDER_SDK` | 应用要求更高 Android 版本 | 需更高系统镜像；当前为 Android 14（API 34），极少触发 |
+| `INSTALL_FAILED_OLDER_SDK` | 应用要求更高 Android 版本 | 默认镜像是 Android 14（API 34）。到「设置 → 性能与资源 → 安卓版本」选 Android 16（API 36），先下载约 1.9GB 镜像，再重启运行时。两个版本的数据互相独立 |
 | `INSTALL_PARSE_FAILED_NO_CERTIFICATES` | APK 无有效签名 | APK 损坏或非正规包，重新获取安装包 |
 | `INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES` / `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | 与已装版本签名不一致 | 先卸载旧版再装 |
 | `INSTALL_FAILED_VERSION_DOWNGRADE` | 设备上已装更高版本 | 不能降级覆盖，装更高版本或先卸载 |

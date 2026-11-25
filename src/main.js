@@ -992,13 +992,19 @@ function openManual(payload = {}) {
 
 function notify(title, body) {
   if (store.getSettings().notifyOnInstall === false) return;
-  if (store.getSettings().language !== 'zh-CN') {
+  const lang = store.getSettings().language;
+  if (lang !== 'zh-CN') {
     const englishNotifications = {
       'ApkStart 仍在后台运行': 'ApkStart is still running in the background',
       '点击托盘图标可重新打开；右键托盘可退出。': 'Click the tray icon to reopen it, or right-click the tray to quit.',
     };
-    title = englishNotifications[title] || title;
-    body = englishNotifications[body] || body;
+    const thaiNotifications = {
+      'ApkStart 仍在后台运行': 'ApkStart ยังทำงานอยู่เบื้องหลัง',
+      '点击托盘图标可重新打开；右键托盘可退出。': 'คลิกไอคอนในถาดระบบเพื่อเปิดอีกครั้ง หรือคลิกขวาที่ถาดระบบเพื่อออก',
+    };
+    const table = lang === 'th' ? { ...englishNotifications, ...thaiNotifications } : englishNotifications;
+    title = table[title] || title;
+    body = table[body] || body;
   }
   try {
     const { Notification } = require('electron');
@@ -1097,7 +1103,10 @@ function buildTray() {
     return;
   }
   const refresh = () => {
-    const english = store.getSettings().language !== 'zh-CN';
+    const lang = store.getSettings().language;
+    const english = lang !== 'zh-CN';
+    // 三选一：中文 / 泰语 / 其它语言一律英文
+    const T = (zh, en, th) => (lang === 'zh-CN' ? zh : (lang === 'th' ? th : en));
     const apps = store.getApps().slice(0, 8);
     // 独立窗口模式主界面是隐藏的，托盘就成了唯一随时可达的入口 ——
     // 「关闭当前应用」必须放这里，否则用户根本没法关掉正在跑的应用。
@@ -1111,17 +1120,17 @@ function buildTray() {
       ? ((store.getApp(currentAppPkg) || {}).label || currentAppPkg)
       : '';
     const menu = Menu.buildFromTemplate([
-      { label: english ? 'Open ApkStart' : '打开 ApkStart', click: () => showWindow() },
-      { label: english ? 'User guide' : '使用手册', click: () => openManual({ topic: 'overview', reason: 'tray' }) },
+      { label: T('打开 ApkStart', 'Open ApkStart', 'เปิด ApkStart'), click: () => showWindow() },
+      { label: T('使用手册', 'User guide', 'คู่มือการใช้งาน'), click: () => openManual({ topic: 'overview', reason: 'tray' }) },
       { type: 'separator' },
       ...(apps.length
         ? apps.map((a) => ({ label: a.label, click: () => runLaunch(a.package) }))
-        : [{ label: english ? 'No apps installed' : '还没有安装应用', enabled: false }]),
+        : [{ label: T('还没有安装应用', 'No apps installed', 'ยังไม่มีแอปที่ติดตั้ง'), enabled: false }]),
       { type: 'separator' },
       {
         label: hasRunning
-          ? (english ? `Close current app (${runningLabel})` : `关闭当前应用（${runningLabel}）`)
-          : (english ? 'Close current app' : '关闭当前应用'),
+          ? T(`关闭当前应用（${runningLabel}）`, `Close current app (${runningLabel})`, `ปิดแอปปัจจุบัน (${runningLabel})`)
+          : T('关闭当前应用', 'Close current app', 'ปิดแอปปัจจุบัน'),
         enabled: !!hasRunning,
         click: () => {
           const pkg = currentAppPkg;
@@ -1132,24 +1141,24 @@ function buildTray() {
       },
       {
         label: wantLandscapeFor(currentAppPkg)
-          ? (english ? 'Switch to portrait (runtime restart required)' : '切回竖屏（需重启运行时）')
-          : (english ? 'Switch to landscape (runtime restart required)' : '切换横屏（需重启运行时）'),
+          ? T('切回竖屏（需重启运行时）', 'Switch to portrait (runtime restart required)', 'สลับเป็นแนวตั้ง (ต้องรีสตาร์ทรันไทม์)')
+          : T('切换横屏（需重启运行时）', 'Switch to landscape (runtime restart required)', 'สลับเป็นแนวนอน (ต้องรีสตาร์ทรันไทม์)'),
         enabled: !!currentAppPkg,
         click: () => { rotateCurrentApp().catch(() => {}); },
       },
       {
         label: displaySettings().mode === 'fullscreen'
-          ? (english ? 'Switch to windowed mode' : '切回竖屏窗口')
-          : (english ? 'Fullscreen (fit screen)' : '全屏（自适应屏幕）'),
+          ? T('切回竖屏窗口', 'Switch to windowed mode', 'สลับเป็นโหมดหน้าต่าง')
+          : T('全屏（自适应屏幕）', 'Fullscreen (fit screen)', 'เต็มหน้าจอ (ปรับตามจอ)'),
         click: () => { toggleDisplayMode(); },
       },
-      { label: english ? 'Rebuild desktop/Start menu shortcuts' : '重建桌面/开始菜单快捷方式', click: () => { installer.ensureShortcuts().catch(() => {}); } },
-      { label: english ? 'Sync shared folder' : '同步共享目录', click: () => sharer.sync() },
-      { label: english ? 'Settings' : '设置', click: () => { showWindow(); send('ui:navigate', 'settings'); } },
+      { label: T('重建桌面/开始菜单快捷方式', 'Rebuild desktop/Start menu shortcuts', 'สร้างทางลัดบนเดสก์ท็อปและเมนูเริ่มใหม่'), click: () => { installer.ensureShortcuts().catch(() => {}); } },
+      { label: T('同步共享目录', 'Sync shared folder', 'ซิงก์โฟลเดอร์แชร์'), click: () => sharer.sync() },
+      { label: T('设置', 'Settings', 'การตั้งค่า'), click: () => { showWindow(); send('ui:navigate', 'settings'); } },
       {
         label: updateInfo && updateInfo.hasUpdate
-          ? (english ? `Update available: ${updateInfo.tag}` : `发现新版本 ${updateInfo.tag}`)
-          : (english ? 'Check for updates' : '检查更新'),
+          ? T(`发现新版本 ${updateInfo.tag}`, `Update available: ${updateInfo.tag}`, `มีเวอร์ชันใหม่: ${updateInfo.tag}`)
+          : T('检查更新', 'Check for updates', 'ตรวจสอบอัปเดต'),
         click: async () => {
           showWindow();
           send('ui:navigate', 'settings');
@@ -1158,24 +1167,26 @@ function buildTray() {
           if (info && info.hasUpdate && info.asset) {
             const r = await dialog.showMessageBox(mainWindow || undefined, {
               type: 'question',
-              title: english ? 'Update available' : '发现新版本',
-              message: english
-                ? `ApkStart ${info.tag} is available (current version: v${app.getVersion()}). Update now?`
-                : `ApkStart ${info.tag} 已发布，当前版本 v${app.getVersion()}。现在更新吗？`,
-              detail: english ? 'See the project release page for update notes.' : (info.notes || '').slice(0, 600),
-              buttons: english ? ['Update now', 'Later'] : ['立即更新', '稍后'],
+              title: T('发现新版本', 'Update available', 'พบเวอร์ชันใหม่'),
+              message: T(
+                `ApkStart ${info.tag} 已发布，当前版本 v${app.getVersion()}。现在更新吗？`,
+                `ApkStart ${info.tag} is available (current version: v${app.getVersion()}). Update now?`,
+                `ApkStart ${info.tag} พร้อมให้อัปเดต (เวอร์ชันปัจจุบัน: v${app.getVersion()}) อัปเดตเลยหรือไม่?`,
+              ),
+              detail: lang === 'zh-CN' ? (info.notes || '').slice(0, 600) : T('', 'See the project release page for update notes.', 'ดูบันทึกการอัปเดตได้ที่หน้ารีลีสของโปรเจกต์'),
+              buttons: T(['立即更新', '稍后'], ['Update now', 'Later'], ['อัปเดตเลย', 'ไว้ทีหลัง']),
               defaultId: 0,
               cancelId: 1,
             });
             if (r.response === 0) runUpdate();
           } else if (info && !info.hasUpdate) {
-            notify(english ? 'You are up to date' : '已是最新版本', `ApkStart v${app.getVersion()}`);
+            notify(T('已是最新版本', 'You are up to date', 'เป็นเวอร์ชันล่าสุดแล้ว'), `ApkStart v${app.getVersion()}`);
           }
         },
       },
       { type: 'separator' },
       {
-        label: english ? 'Quit' : '退出',
+        label: T('退出', 'Quit', 'ออก'),
         click: async () => {
           try { appWin.close({ keepApp: true }); } catch (_) { /* ignore */ }
           quitting = true;
@@ -1184,7 +1195,7 @@ function buildTray() {
       },
     ]);
     tray.setContextMenu(menu);
-    tray.setToolTip(english ? 'ApkStart — Android app player' : 'ApkStart — 安卓应用运行器');
+    tray.setToolTip(T('ApkStart — 安卓应用运行器', 'ApkStart — Android app player', 'ApkStart — โปรแกรมเล่นแอป Android'));
   };
   // Windows 托盘的惯例是单击就打开主窗口（双击当然也可以）。
   // 之前只绑了 double-click，用户单击没反应，会以为托盘图标坏了。
@@ -2243,14 +2254,16 @@ function registerIpc() {
 
   // 通用确认框（渲染层统一走这里，避免各处自己拼 dialog 文案）
   ipcMain.handle('app:confirm', async (_e, opts = {}) => {
-    const english = store.getSettings().language !== 'zh-CN';
+    const lang = store.getSettings().language;
+    const english = lang !== 'zh-CN';
+    const th = lang === 'th';
     // 调用方传两个按钮（取消在前）时按它的文案；否则用当前界面语言的默认文案
     const buttons = Array.isArray(opts.buttons) && opts.buttons.length === 2
       ? opts.buttons
-      : [english ? 'Cancel' : '取消', opts.okLabel || (english ? 'OK' : '确定')];
+      : [th ? 'ยกเลิก' : (english ? 'Cancel' : '取消'), opts.okLabel || (th ? 'ตกลง' : (english ? 'OK' : '确定'))];
     const { response } = await dialog.showMessageBox(mainWindow || undefined, {
       type: opts.type || 'question',
-      title: opts.title || (english ? 'Confirm' : '确认'),
+      title: opts.title || (th ? 'ยืนยัน' : (english ? 'Confirm' : '确认')),
       message: opts.message || '',
       detail: opts.detail || '',
       buttons,
@@ -2339,16 +2352,23 @@ function registerIpc() {
     const pass = { apply: false, aggressive: !!opts.aggressive, includeSnapshots: !!opts.includeSnapshots };
     if (!opts.apply) return runtime.cleanup(pass);
     const preview = await runtime.cleanup(pass);
-    const en = store.getSettings().language !== 'zh-CN';
+    const lang = store.getSettings().language;
+    const en = lang !== 'zh-CN';
+    const thai = lang === 'th';
     const mb = (preview.candidates.reduce((n, c) => n + c.size, 0) / 1048576).toFixed(0);
     const { response } = await dialog.showMessageBox(mainWindow, {
       type: 'warning',
-      buttons: en ? ['Cancel', `Clean up ${preview.candidates.length} items`] : ['取消', `清理 ${preview.candidates.length} 项`],
+      buttons: thai ? ['ยกเลิก', `ล้าง ${preview.candidates.length} รายการ`] : (en ? ['Cancel', `Clean up ${preview.candidates.length} items`] : ['取消', `清理 ${preview.candidates.length} 项`]),
       defaultId: 0,
       cancelId: 0,
-      title: en ? 'Confirm runtime cache cleanup' : '确认清理运行时缓存',
-      message: en ? `About ${mb} MB will be freed` : `将释放约 ${mb} MB`,
-      detail: en
+      title: thai ? 'ยืนยันการล้างแคชของรันไทม์' : (en ? 'Confirm runtime cache cleanup' : '确认清理运行时缓存'),
+      message: thai ? `จะเรียกคืนพื้นที่ประมาณ ${mb} MB` : (en ? `About ${mb} MB will be freed` : `将释放约 ${mb} MB`),
+      detail: thai
+        ? (opts.includeSnapshots
+          ? 'รันไทม์จะหยุดก่อน แล้วลบอิมเมจเก่า สแนปช็อตเริ่มเร็วของ AVD ปัจจุบัน ไฟล์ล็อก และแคชของ AVD ที่ไม่ได้ใช้ แอปที่ติดตั้งยังอยู่ (ล้างเฉพาะสแนปช็อต) '
+          : 'ลบเฉพาะอิมเมจเก่า สแนปช็อตเก่า ไฟล์ล็อก และแคชของ AVD ที่ไม่ได้ใช้ แอปที่ติดตั้งจะยังอยู่ ')
+          + 'การดำเนินการนี้ย้อนกลับไม่ได้ แนะนำให้ส่งออกรายงานการวินิจฉัยก่อน'
+      : en
         ? (opts.includeSnapshots
           ? 'The runtime will stop first, then old images, the quick-boot snapshot of the current AVD, lock files and the cache of inactive AVDs are deleted. Installed apps themselves are kept (only snapshots are cleared). '
           : 'Only old images, old snapshots, lock files and the cache of inactive AVDs are deleted; installed apps are kept. ')
@@ -2447,10 +2467,13 @@ function registerIpc() {
     }
   });
 
-  ipcMain.handle('provision:installPlayImage', async () => {
+  ipcMain.handle('provision:installPlayImage', async (_e, apiArg) => {
     try {
+      // 只认白名单里的 Android 版本，渲染层传什么都不会变成下载地址
+      const api = ['34', '36'].includes(String(apiArg)) ? String(apiArg) : '34';
       const r = await runtime.provisioner.installPlayImage(
         (p) => send('provision:progress', { ...p, component: 'playimg' }),
+        api,
       );
       return { ok: true, ...r };
     } catch (e) {

@@ -1032,7 +1032,7 @@ const UI_TEXT = {
   '开始清理': 'Start cleanup',
   // —— 补译 3：安装失败原因（src/core/adb.js 的 friendlyInstallError）——
   "安装失败：这个应用只提供 ARM 原生库（多数国产应用如此），当前系统镜像没有 ARM 转译层。ApkStart 会自动切换到内置新版翻译层的兼容镜像并重试。": "Installation failed: this app provides only ARM native libraries (as most Chinese apps do), and the current system image has no ARM translation layer. ApkStart will automatically switch to the compatibility image with the newer translation layer and retry.",
-  "安装失败：应用要求的 Android 版本高于当前运行时（需更高系统镜像）。": "Installation failed: the app requires a newer Android version than the current runtime (a newer system image is needed).",
+  "安装失败：应用要求的 Android 版本高于当前运行时。可到「设置 → 性能与资源 → 安卓版本」选 Android 16（需先下载约 1.9GB 镜像）。": "Installation failed: the app requires a newer Android version than the current runtime. Choose Android 16 under Settings → Performance & Resources → Android version (download the image of about 1.9 GB first).",
   "安装失败：APK 没有有效签名，无法安装。": "Installation failed: the APK has no valid signature and cannot be installed.",
   "安装失败：与已安装版本签名不一致，请先卸载旧版再装。": "Installation failed: the signature differs from the installed version; uninstall the old version first, then install.",
   "安装失败：设备上已安装更高版本，不能降级覆盖。": "Installation failed: a newer version is already installed on the device and cannot be overwritten by a downgrade.",
@@ -1049,6 +1049,19 @@ const UI_TEXT = {
   "安装失败：系统内部错误（常见于存储空间不足或开机未完成），请重启运行时后重试。": "Installation failed: internal system error (often low storage or boot not finished); restart the runtime and try again.",
   "安装失败，未获得明确原因": "Installation failed, and no clear reason was returned",
   "安装失败：安装失败，未获得明确原因": 'Installation failed: no clear reason was returned',
+  // —— 补译 4：安卓版本选择 ——
+  "安卓版本": "Android version",
+  "Android 14（默认）": "Android 14 (default)",
+  "Android 16（API 36）": "Android 16 (API 36)",
+  "下载 Android 16 系统镜像": "Download Android 16 system image",
+  "重启运行时": "Restart runtime",
+  "已下载": "Downloaded",
+  "应用要求更高的 Android 版本时（安装报 INSTALL_FAILED_OLDER_SDK）请选 Android 16。每个版本有各自的系统镜像和数据，互不影响：切换不会丢已装的应用，切回去还在。第一次用新版本需要先下载镜像（约 1.9GB），完成后重启运行时生效。": "Choose Android 16 when an app needs a newer Android version (installation reports INSTALL_FAILED_OLDER_SDK). Each version has its own system image and data, so they do not affect each other: switching does not lose installed apps and they are still there when you switch back. The first time you use a newer version you must download its image (about 1.9 GB), then restart the runtime for it to take effect.",
+  "安卓版本已更改": "Android version changed",
+  "需要先下载这个版本的系统镜像": "Download this version’s system image first",
+  "系统镜像就绪": "System image ready",
+  "系统镜像下载失败": "System image download failed",
+  "开始下载系统镜像": "Started downloading the system image",
 };
 
 const UI_PHRASES = [
@@ -1284,6 +1297,9 @@ function thaiDynamicText(key) {
   const t = (text) => i18n.translate(text, 'th') || UI_TEXT[text] || text;
   const pk = (x) => (x === '应用' ? 'แอป' : x);
   const rules = [
+    [/^当前使用：Android (\d+)$/, (_m, v) => `ใช้อยู่: Android ${v}`],
+    [/^未下载（约 ([\d.]+)GB）$/, (_m, gb) => `ยังไม่ได้ดาวน์โหลด (ประมาณ ${gb} GB)`],
+    [/^下载 (Android \d+) 系统镜像（约 ([\d.]+)GB）…$/, (_m, v, gb) => `กำลังดาวน์โหลดอิมเมจระบบ ${v} (ประมาณ ${gb} GB)…`],
     [/^(.+)（(INSTALL_[A-Z_]+)）$/, (_m, body, code) => `${localizedText(body)} (${code})`],
     [/^安装失败：([^\u3400-\u9fff]+)$/, (_m, raw) => `ติดตั้งไม่สำเร็จ: ${raw}`],
     [/^(\S+) 检测到模拟器 \/ 转译环境后主动退出（反模拟、反调试或安全校验），属于应用自身限制，不是故障；ApkStart 无法绕过，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} ตรวจพบอีมูเลเตอร์ / สภาพแวดล้อมการแปลแล้วออกจากการทำงานเอง (การตรวจจับอีมูเลเตอร์ การป้องกันการดีบัก หรือการตรวจสอบความปลอดภัย) นี่เป็นข้อจำกัดของแอปเอง ไม่ใช่ความผิดปกติ ApkStart ข้ามไม่ได้ ดูหัวข้อ 6.3 ในคู่มือในตัว`],
@@ -1360,6 +1376,9 @@ function localizedText(source) {
   const tr = (t) => UI_TEXT[t] || t;
   const pk = (x) => (x === '应用' ? 'The app' : x);
   const dynamicPatterns = [
+    [/^当前使用：Android (\d+)$/, (_m, v) => `In use: Android ${v}`],
+    [/^未下载（约 ([\d.]+)GB）$/, (_m, gb) => `Not downloaded (about ${gb} GB)`],
+    [/^下载 (Android \d+) 系统镜像（约 ([\d.]+)GB）…$/, (_m, v, gb) => `Downloading the ${v} system image (about ${gb} GB)…`],
     [/^(.+)（(INSTALL_[A-Z_]+)）$/, (_m, body, code) => `${localizedText(body)} (${code})`],
     [/^安装失败：([^\u3400-\u9fff]+)$/, (_m, raw) => `Installation failed: ${raw}`],
     [/^(\S+) 检测到模拟器 \/ 转译环境后主动退出（反模拟、反调试或安全校验），属于应用自身限制，不是故障；ApkStart 无法绕过，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} detected the emulator / translation environment and exited on its own (anti-emulator, anti-debug or security checks). This is a limit of the app itself, not a fault; ApkStart cannot bypass it. See section 6.3 of the built-in guide.`],
@@ -1731,9 +1750,33 @@ function updateStats() {
   $('statusStats').textContent = n ? `${n} 个应用` : '暂无应用';
 }
 
+/** 「安卓版本」一栏：当前用哪套、选中的镜像下好没有，决定显示哪个按钮 */
+function refreshAndroidApiStatus() {
+  const sel = $('setAndroidApi');
+  if (!sel) return;
+  const info = ((state.status || {}).env || {}).androidApi;
+  const note = $('androidApiStatus');
+  const dl = $('btnInstallAndroid16');
+  const restart = $('btnApplyAndroidApi');
+  if (!info) { note.textContent = ''; dl.hidden = true; restart.hidden = true; return; }
+  const chosen = String(sel.value || info.selected || '34');
+  const img = (info.images || {})[chosen] || { ok: false, approxGB: 1.9 };
+  if (!img.ok) {
+    note.textContent = `未下载（约 ${img.approxGB}GB）`;
+    dl.hidden = false;
+    restart.hidden = true;
+  } else {
+    note.textContent = `当前使用：Android ${info.effective === '36' ? 16 : 14}`;
+    dl.hidden = true;
+    // 选中的镜像已就位、而当前用的不是它（或安卓正在运行）→ 给一个重启按钮
+    restart.hidden = !((state.status || {}).vmRunning || info.effective !== chosen);
+  }
+}
+
 async function refreshStatus() {
   try {
     state.status = await api.runtimeStatus();
+    refreshAndroidApiStatus();
     const s = state.status;
     const dot = $('statusDot');
     const text = $('statusText');
@@ -2633,6 +2676,7 @@ function fillSettings(s) {
   if ($('setDataGB')) $('setDataGB').value = String(Number(eng.dataPartitionGB || 0));
   if ($('setFastDns')) $('setFastDns').checked = eng.fastDns !== false;
   if ($('setLocale')) $('setLocale').value = eng.locale || 'zh-CN';
+  if ($('setAndroidApi')) { $('setAndroidApi').value = String(eng.androidApi || '34'); refreshAndroidApiStatus(); }
   if ($('setChineseIme')) $('setChineseIme').checked = eng.chineseIme !== false;
   if ($('setKeepSnapshot')) $('setKeepSnapshot').checked = eng.keepSnapshot !== false;
   $('setDisplayMode').value = d.mode === 'fullscreen' ? 'fullscreen' : 'window';
@@ -3262,6 +3306,50 @@ function bindSettings() {
   }
   if ($('setFastDns')) {
     $('setFastDns').addEventListener('change', (e) => save({ engine: { fastDns: e.target.checked } }));
+  }
+  if ($('setAndroidApi')) {
+    $('setAndroidApi').addEventListener('change', async (e) => {
+      state.settings = await api.setSettings({ engine: { androidApi: e.target.value } });
+      state.status = await api.runtimeStatus().catch(() => state.status);
+      refreshAndroidApiStatus();
+      const img = ((((state.status || {}).env || {}).androidApi || {}).images || {})[e.target.value];
+      if (img && img.ok) toast({ title: '安卓版本已更改', body: '重启运行时后生效', type: 'ok' });
+      else toast({ title: '安卓版本已更改', body: '需要先下载这个版本的系统镜像', type: 'info' });
+    });
+    $('btnApplyAndroidApi').addEventListener('click', async () => {
+      const b = $('btnApplyAndroidApi');
+      b.disabled = true;
+      try { await api.restartRuntime(); } catch (_) { /* 失败由状态栏反映 */ }
+      b.disabled = false;
+      refreshStatus();
+    });
+    $('btnInstallAndroid16').addEventListener('click', async () => {
+      const btn = $('btnInstallAndroid16');
+      btn.disabled = true;
+      const t = toast({ title: '开始下载系统镜像', body: '准备中…', sticky: true, spinner: true, progress: 3 });
+      const un = api.on('provision:progress', (p) => {
+        if (p.component !== 'playimg') return;
+        t.update({ title: '下载 Android 16 系统镜像', body: p.message || '', progress: p.percent });
+      });
+      try {
+        const r = await api.installPlayImage('36');
+        if (r && r.ok) {
+          t.update({ title: '系统镜像就绪', body: '重启运行时后生效', progress: 100 });
+          setTimeout(() => t.dismiss(), 3000);
+        } else {
+          t.dismiss();
+          toast({ title: '系统镜像下载失败', body: (r && r.error) || '未知错误', type: 'error' });
+        }
+      } catch (err) {
+        t.dismiss();
+        toast({ title: '系统镜像下载失败', body: err.message, type: 'error' });
+      } finally {
+        un();
+        btn.disabled = false;
+        state.status = await api.runtimeStatus().catch(() => state.status);
+        refreshAndroidApiStatus();
+      }
+    });
   }
   if ($('setLocale')) {
     $('setLocale').addEventListener('change', async (e) => {

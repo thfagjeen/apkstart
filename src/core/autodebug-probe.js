@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
-const { AVD_NAME, SNAPSHOT_NAME } = require('./emulator');
+const { avdNameFor, SNAPSHOT_NAME } = require('./emulator');
 
 /** 引导阶段计时：第一次看到「在跑但没 ready」的时刻 */
 let bootingSince = 0;
@@ -236,7 +236,7 @@ async function collect(ctx) {
   // ---- 快照 / 锁 / 孤儿 ----
   try {
     if (paths) {
-      const snap = inspectSnapshot(paths.avdHome, AVD_NAME, SNAPSHOT_NAME);
+      const snap = inspectSnapshot(paths.avdHome, avdNameFor(paths.sysApi), SNAPSHOT_NAME);
       obs.runtime.snapshotStale = snap.stale;
       obs.runtime.snapshotMB = snap.mb;
     }

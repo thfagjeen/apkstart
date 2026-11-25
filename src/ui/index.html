@@ -485,6 +485,19 @@
           <span class="sub" id="dataNote">正在读取数据分区…</span>
         </div>
         <div class="field">
+          <label>安卓版本</label>
+          <select id="setAndroidApi">
+            <option value="34">Android 14（默认）</option>
+            <option value="36">Android 16（API 36）</option>
+          </select>
+          <div class="row">
+            <span class="inline-note" id="androidApiStatus"></span>
+            <button class="btn ghost sm" id="btnInstallAndroid16" hidden>下载 Android 16 系统镜像</button>
+            <button class="btn ghost sm" id="btnApplyAndroidApi" hidden>重启运行时</button>
+          </div>
+          <span class="sub">应用要求更高的 Android 版本时（安装报 INSTALL_FAILED_OLDER_SDK）请选 Android 16。每个版本有各自的系统镜像和数据，互不影响：切换不会丢已装的应用，切回去还在。第一次用新版本需要先下载镜像（约 1.9GB），完成后重启运行时生效。</span>
+        </div>
+        <div class="field">
           <label>系统语言</label>
           <select id="setLocale">
             <option value="zh-CN">简体中文（推荐）</option>

@@ -1348,6 +1348,7 @@ class Runtime {
     }
     const report = require('./layers').prune(this.provisioner.paths().root, {
       apply, aggressive, keepSnapshots: !includeSnapshots && this.vmRunning,
+      keepAvd: `${this.emulator.avdName}.avd`,
     });
     // 预览阶段若停了机，给用户一个提示：清完可手动重启运行时
     return { ...report, apply, stoppedVm };
@@ -1357,7 +1358,7 @@ class Runtime {
    * 彻底重置安卓数据（清空 /data 用户分区 + 已装应用 + 快速启动快照），
    * 把 AVD 还原成「刚装好系统、没有任何第三方 app」的干净状态。
    * 这一项会真实删除 8–16GB 的用户数据镜像，必须二次确认（UI 负责），且只动
-   * 当前活动 AVD（apkstart.avd），不动只读基础镜像、不动其它 AVD。
+   * 当前活动 AVD（apkstart.avd；选了更高 Android 版本时是 apkstart36.avd 之类），不动只读基础镜像、不动其它 AVD。
    * 保留 config.ini / hardware-qemu.ini，AVD 仍有效，下次点开应用会重新冷启动建数据。
    * @returns {{ok:boolean, reclaimed:number, avdDir:string, error?:string}}
    */
@@ -1366,7 +1367,7 @@ class Runtime {
     const path = require('path');
     try {
       if (this.vmRunning) await this.stop().catch(() => {});
-      const avdDir = path.join(this.provisioner.paths().avdHome, 'apkstart.avd');
+      const avdDir = path.join(this.provisioner.paths().avdHome, `${this.emulator.avdName}.avd`);
       let reclaimed = 0;
       if (fs.existsSync(avdDir)) {
         for (const e of fs.readdirSync(avdDir, { withFileTypes: true })) {

@@ -39,6 +39,11 @@ const SOURCES = {
   // ARM 兼容镜像（Google Play 版，内置 native bridge）
   playImgIndex: 'https://dl.google.com/android/repository/sys-img/google_apis_playstore/sys-img2-3.xml',
   playImgFallback: 'https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-34_r14.zip',
+  // 其它 Android 版本的兜底地址（索引不可用时用）。键是 API 级别。
+  playImgFallbacks: {
+    34: 'https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-34_r14.zip',
+    36: 'https://dl.google.com/android/repository/sys-img/google_apis_playstore/x86_64-36_r07.zip',
+  },
   // Android-x86 9.0-r2（x86_64）：仅在用户已自备 ISO 时使用
   iso: [
     'https://master.dl.sourceforge.net/project/android-x86/Release%209.0/android-x86_64-9.0-r2.iso?viasf=1',
@@ -91,6 +96,20 @@ function absUrl(u, base = REPO_BASE) {
  */
 const PLAY_SYSIMG = { api: '34', tag: 'google_apis_playstore', abi: 'x86_64' };
 const DEFAULT_SYSIMG = PLAY_SYSIMG;
+
+/**
+ * 可选的 Android 版本（都是 Google Play x86_64 镜像）。34 = Android 14 是默认，也是老用户已有的那一套；
+ * 36 = Android 16：给 minSdk 更高的应用用（装 Android 16 才有的应用会报 INSTALL_FAILED_OLDER_SDK）。
+ * 每个版本有自己的镜像目录和自己的 AVD（用户数据、快照都互不相通：不同 Android 版本的 /data 不能混用）。
+ */
+const PLAY_SYSIMGS = {
+  34: { api: '34', label: 'Android 14', tag: 'google_apis_playstore', abi: 'x86_64', approxGB: 1.5 },
+  36: { api: '36', label: 'Android 16', tag: 'google_apis_playstore', abi: 'x86_64', approxGB: 1.9 },
+};
+const ANDROID_API_CHOICES = Object.keys(PLAY_SYSIMGS);
+function playSysimg(api) {
+  return PLAY_SYSIMGS[String(api)] || PLAY_SYSIMGS[34];
+}
 
 const MIN_SIZE = {
   adb: 5 * 1024 * 1024,
@@ -232,11 +251,33 @@ class Provisioner {
     return r && r.trim() ? r : path.join(store.DATA_DIR, 'runtime');
   }
 
-  paths() {
+  /** 设置里选的 Android 版本（只认已知的；不认识的一律当 34） */
+  selectedApi() {
+    const v = String(((store.getSettings() || {}).engine || {}).androidApi || '34');
+    return ANDROID_API_CHOICES.includes(v) ? v : '34';
+  }
+
+  /**
+   * 真正要用的 Android 版本：设置里选的那套**镜像已经下好**才用它，否则退回 34。
+   * 这样选了 Android 16 却还没下载时，现有的 Android 14 照常能开，不会卡死。
+   * 结果短时间缓存：paths() 到处被调，每次都去探测磁盘太浪费。
+   */
+  effectiveApi() {
+    const sel = this.selectedApi();
+    if (sel === '34') return '34';
+    const c = this._apiMemo;
+    if (c && c.sel === sel && Date.now() - c.at < 1500) return c.api;
+    const api = this.playImageInfo(sel).ok ? sel : '34';
+    this._apiMemo = { sel, api, at: Date.now() };
+    return api;
+  }
+
+  paths(apiOverride) {
     const root = this.root;
-    const sysTag = DEFAULT_SYSIMG.tag;
-    const sysApi = DEFAULT_SYSIMG.api;
-    const sysAbi = DEFAULT_SYSIMG.abi;
+    const sys = playSysimg(apiOverride || this.effectiveApi());
+    const sysTag = sys.tag;
+    const sysApi = sys.api;
+    const sysAbi = sys.abi;
     // 运行时目录可写吗？
     // 商店（MSIX）版把 emulator / platform-tools / system-images 直接放在安装包
     // 里（C:\Program Files\WindowsApps\...），该目录是只读的：
@@ -467,18 +508,27 @@ class Provisioner {
         ok: sysimg.ok || compatReady,
         dir: sysimg.dir,
         size: sysimg.ok ? sysimg.size : (compatReady ? playImage.size : 0),
-        api: sysimg.ok ? sysimg.api : (compatReady ? PLAY_SYSIMG.api : sysimg.api),
+        api: sysimg.ok ? sysimg.api : (compatReady ? (playImage.api || PLAY_SYSIMG.api) : sysimg.api),
         compressed: needsExtract,
         required: false,
         note: sysimg.ok
           ? `Android ${sysimg.api}（${(sysimg.size / 1073741824).toFixed(2)} GB${sysimg.compressed ? '，包内压缩版，首次启动自动展开' : ''}）`
           : (compatReady
-            ? `Android ${PLAY_SYSIMG.api}（${playImage.compressed ? '包内压缩版，首次启动自动展开' : 'ARM 兼容镜像'}）`
+            ? `Android ${playImage.api || PLAY_SYSIMG.api}（${playImage.compressed ? '包内压缩版，首次启动自动展开' : 'ARM 兼容镜像'}）`
             : (sysimg.note || '未下载')),
       },
       // true = 镜像就在本地（包内），只需展开一次；上层据此**禁止**任何联网下载
       needsExtract,
       playImage,
+      // Android 版本选择：每个版本的镜像是否已经下好（界面用来显示状态与「下载」按钮）
+      androidApi: {
+        selected: this.selectedApi(),
+        effective: this.effectiveApi(),
+        images: Object.fromEntries(ANDROID_API_CHOICES.map((api) => {
+          const info = this.playImageInfo(api);
+          return [api, { ok: !!info.ok, label: playSysimg(api).label, approxGB: playSysimg(api).approxGB }];
+        })),
+      },
       accel,
       qemu: { ...qemu, required: false },
       iso: {
@@ -1140,9 +1190,10 @@ class Provisioner {
   }
 
   /** ARM 兼容镜像（Google Play 版）是否已就位 */
-  playImageInfo() {
-    const p = this.paths();
-    const rel = `android-${PLAY_SYSIMG.api}/${PLAY_SYSIMG.tag}/${PLAY_SYSIMG.abi}`;
+  playImageInfo(apiOverride) {
+    const img = playSysimg(apiOverride || this.effectiveApi());
+    const p = this.paths(img.api);
+    const rel = `android-${img.api}/${img.tag}/${img.abi}`;
     // 两个位置都看：展开目标（可写的数据目录）与包内原始位置。
     // 商店/完整版安装包里带的是 system.img.xz，第一次开机才展开 —— 这里必须
     // 认它，否则 installSystemImage / autoDeploy 会去网上重下一套。
@@ -1152,13 +1203,13 @@ class Provisioner {
       if (!fs.existsSync(path.join(dir, 'kernel-ranchu'))) continue;
       const size = fileSize(path.join(dir, 'system.img'));
       if (size > MIN_SIZE.sysimg) {
-        return { ok: true, dir, size, api: PLAY_SYSIMG.api, tag: PLAY_SYSIMG.tag, compressed: false };
+        return { ok: true, dir, size, api: img.api, tag: img.tag, compressed: false };
       }
       if (!packed) {
         for (const name of ['system.img.xz', 'system.img.gz']) {
           const cs = fileSize(path.join(dir, name));
           if (cs > MIN_SIZE.sysimg) {
-            packed = { ok: true, dir, size: cs, api: PLAY_SYSIMG.api, tag: PLAY_SYSIMG.tag, compressed: true, file: name };
+            packed = { ok: true, dir, size: cs, api: img.api, tag: img.tag, compressed: true, file: name };
             break;
           }
         }
@@ -1170,33 +1221,36 @@ class Provisioner {
   }
 
   /** 解析 Google Play 版镜像地址（<url> 相对索引文件所在目录） */
-  async resolvePlayUrl() {
-    if (this._cache.playUrl) return this._cache.playUrl;
+  async resolvePlayUrl(api = '34') {
+    const img = playSysimg(api);
+    const cacheKey = `playUrl${img.api}`;
+    if (this._cache[cacheKey]) return this._cache[cacheKey];
     try {
       const xml = await this._fetchText(SOURCES.playImgIndex);
-      const want = `system-images;android-${PLAY_SYSIMG.api};${PLAY_SYSIMG.tag};${PLAY_SYSIMG.abi}`;
+      const want = `system-images;android-${img.api};${img.tag};${img.abi}`;
       const block = new RegExp(`<remotePackage path="${want}"[\\s\\S]*?</remotePackage>`).exec(xml);
       if (block) {
         const base = baseOf(SOURCES.playImgIndex);
         const urls = [...block[0].matchAll(/<url>([^<]+)<\/url>/g)].map((m) => absUrl(m[1], base))
           .filter((u) => /x86_64.*\.zip$/i.test(u));
         if (urls.length) {
-          this._cache.playUrl = urls[urls.length - 1];
-          return this._cache.playUrl;
+          this._cache[cacheKey] = urls[urls.length - 1];
+          return this._cache[cacheKey];
         }
       }
     } catch (_) { /* 落兜底 */ }
-    this._cache.playUrl = SOURCES.playImgFallback;
-    return this._cache.playUrl;
+    this._cache[cacheKey] = (SOURCES.playImgFallbacks && SOURCES.playImgFallbacks[img.api]) || SOURCES.playImgFallback;
+    return this._cache[cacheKey];
   }
 
   /** 下载并安装 ARM 兼容镜像（Google Play 版，约 1.5GB） */
-  async installPlayImage(onProgress = () => {}) {
+  async installPlayImage(onProgress = () => {}, api = '34') {
+    const img = playSysimg(api);
     const p = this.ensureDirs();
     await this.guardDisk('playimg', p.sysImgRoot);
-    const url = await this.resolvePlayUrl();
-    const zip = path.join(p.tmp, 'play-sysimg.zip');
-    onProgress({ stage: 'download', message: '下载 ARM 兼容镜像（Android 14，约 1.5GB）…', percent: 1 });
+    const url = await this.resolvePlayUrl(img.api);
+    const zip = path.join(p.tmp, `play-sysimg-${img.api}.zip`);
+    onProgress({ stage: 'download', message: `下载 ${img.label} 系统镜像（约 ${img.approxGB}GB）…`, percent: 1 });
     await downloadAnyParallel(this._downloadUrls(url), zip, {
       connections: 8,
       minChunk: 4 * 1024 * 1024,
@@ -1210,7 +1264,7 @@ class Provisioner {
     });
     assertComplete(zip, MIN_SIZE.sysimg, '兼容镜像');
 
-    const dest = path.join(p.sysImgRoot, `android-${PLAY_SYSIMG.api}`, PLAY_SYSIMG.tag);
+    const dest = path.join(p.sysImgRoot, `android-${img.api}`, img.tag);
     fs.mkdirSync(dest, { recursive: true });
     onProgress({ stage: 'extract', message: '解压兼容镜像（3GB，需十余秒）…', percent: 82 });
     await this.extractZip(zip, dest, {
@@ -1222,7 +1276,8 @@ class Provisioner {
     });
     fs.rmSync(zip, { force: true });
 
-    const info = this.playImageInfo();
+    const info = this.playImageInfo(img.api);
+    this._apiMemo = null;
     if (!info.ok) throw new Error('兼容镜像解压后校验失败');
     // 旧版（API 30）兼容镜像不再使用，成功装好后清理腾空间
     for (const old of ['android-30']) {
@@ -1421,4 +1476,4 @@ class Provisioner {
   }
 }
 
-module.exports = { Provisioner, SOURCES, MIN_SIZE, absUrl, baseOf };
+module.exports = { Provisioner, SOURCES, MIN_SIZE, absUrl, baseOf, PLAY_SYSIMGS, ANDROID_API_CHOICES, playSysimg };

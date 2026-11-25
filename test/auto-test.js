@@ -2940,6 +2940,54 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(threw, '连不上更新服务器时必须报错');
   });
 
+  // —— 多 Android 版本（14 / 16）——
+  console.log('\n[Android 版本选择]');
+  await test('选了还没下载镜像的版本时退回 Android 14；未知取值一律当 14', () => {
+    const store = require('../src/core/store');
+    const { Provisioner } = require('../src/core/provision');
+    const prov = new Provisioner(path.join(__dirname, '..'));
+    const real = store.getSettings;
+    try {
+      const pick = (api, ok36) => {
+        store.getSettings = () => ({ ...real(), engine: { ...real().engine, androidApi: api } });
+        prov.playImageInfo = (a) => ({ ok: String(a) === '34' || ok36 });
+        prov._apiMemo = null;
+        return { sel: prov.selectedApi(), eff: prov.effectiveApi() };
+      };
+      assert(pick('36', false).eff === '34', '没下载 Android 16 时应退回 34，别卡死');
+      assert(pick('36', true).eff === '36', '下载好了才用 36');
+      assert(pick('34', true).eff === '34', '选 34 就是 34');
+      assert(pick('99', true).sel === '34' && pick('abc', true).eff === '34', '未知取值（含被改坏的设置）一律当 34');
+    } finally {
+      store.getSettings = real;
+      delete prov.playImageInfo;
+    }
+  });
+
+  await test('每个 Android 版本一个 AVD：14 沿用原名 apkstart（数据不动），16 是 apkstart36', () => {
+    const { avdNameFor, AVD_NAME } = require('../src/core/emulator');
+    assert(AVD_NAME === 'apkstart', '老用户的 AVD 名不能变');
+    assert(avdNameFor(34) === 'apkstart' && avdNameFor('34') === 'apkstart', 'Android 14 沿用 apkstart');
+    assert(avdNameFor(30) === 'apkstart', '旧 AOSP 镜像也沿用 apkstart');
+    assert(avdNameFor(36) === 'apkstart36' && avdNameFor('36') === 'apkstart36', 'Android 16 用 apkstart36');
+    const { PLAY_SYSIMGS, ANDROID_API_CHOICES, playSysimg } = require('../src/core/provision');
+    assert(ANDROID_API_CHOICES.join() === '34,36', `可选版本应为 34,36，实际 ${ANDROID_API_CHOICES.join()}`);
+    assert(playSysimg(36).label === 'Android 16' && playSysimg('nope').api === '34' && PLAY_SYSIMGS[36].tag === 'google_apis_playstore', '版本表');
+  });
+
+  await test('清理旧文件时不会把 Android 16 的 AVD（apkstart36.avd）当「非活动 AVD」回收', () => {
+    const layers = require('../src/core/layers');
+    const root = path.join(TMP, 'layers-avd');
+    for (const n of ['apkstart.avd', 'apkstart36.avd', 'apkstart-arm.avd']) {
+      fs.mkdirSync(path.join(root, 'avd', n), { recursive: true });
+      fs.writeFileSync(path.join(root, 'avd', n, 'config.ini'), 'x');
+    }
+    const names = (keepAvd) => layers.analyze(root, { keepAvd }).candidates
+      .filter((c) => /\.avd$/.test(c.path)).map((c) => path.basename(c.path));
+    assert(names('apkstart.avd').join() === 'apkstart-arm.avd', `只应清测试遗留的 AVD，实际 ${names('apkstart.avd').join()}`);
+    assert(names('apkstart36.avd').join() === 'apkstart-arm.avd', '当前用 Android 16 时，apkstart.avd 也不能被清');
+  });
+
   console.log(results.join('\n'));
   console.log(`\n结果：${passed} 通过，${failed} 失败\n`);
 

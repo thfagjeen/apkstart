@@ -280,7 +280,7 @@ ApkStart translates the original English errors into plain language. Use the tab
 | Error code | Meaning | What to do |
 |---|---|---|
 | `INSTALL_FAILED_NO_MATCHING_ABIS` | The app provides only ARM libraries and the current image has no ARM translation layer | **Usually handled automatically**: ApkStart switches to the compatibility image and retries. See [6.3](#s6-3) |
-| `INSTALL_FAILED_OLDER_SDK` | The app requires a newer Android version | Needs a newer system image; the current one is Android 14 (API 34), so this is rarely triggered |
+| `INSTALL_FAILED_OLDER_SDK` | The app requires a newer Android version | The default image is Android 14 (API 34). Choose Android 16 (API 36) under Settings → Performance & Resources → Android version, download the image of about 1.9 GB, then restart the runtime. The two versions keep separate data |
 | `INSTALL_PARSE_FAILED_NO_CERTIFICATES` | The APK has no valid signature | The APK is damaged or not an official package; get the installer again |
 | `INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES` / `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | The signature differs from the installed version | Uninstall the old version first, then install |
 | `INSTALL_FAILED_VERSION_DOWNGRADE` | A newer version is already installed on the device | A downgrade cannot overwrite it; install a newer version or uninstall first |

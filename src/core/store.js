@@ -88,6 +88,9 @@ const DEFAULT_SETTINGS = {
     // 系统语言：开机时由 emulator -prop 注入（guest 里 setprop 会被 SELinux 拒绝）。
     // 默认简体中文。设成 en-US 或 off 就回到镜像原生英文。
     locale: 'zh-CN',
+    // Android 版本：'34' = Android 14（默认）| '36' = Android 16。
+    // 每个版本有自己的镜像与 AVD（数据互不相通）；选的那套镜像没下好时自动退回 34。
+    androidApi: '34',
     // 中文输入法：随包带 AOSP 谷歌拼音输入法，开机后静默安装并启用。
     // 系统镜像只带 LatinIME（英文键盘），不装就打不了中文。
     chineseIme: true,
