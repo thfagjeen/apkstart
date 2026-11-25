@@ -13,3 +13,4 @@
 *.iso   binary
 *.img   binary
 *.qcow2 binary
+*.bat   text eol=crlf
