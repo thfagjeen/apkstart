@@ -2241,12 +2241,17 @@ function registerIpc() {
 
   // 通用确认框（渲染层统一走这里，避免各处自己拼 dialog 文案）
   ipcMain.handle('app:confirm', async (_e, opts = {}) => {
+    const english = store.getSettings().language !== 'zh-CN';
+    // 调用方传两个按钮（取消在前）时按它的文案；否则用当前界面语言的默认文案
+    const buttons = Array.isArray(opts.buttons) && opts.buttons.length === 2
+      ? opts.buttons
+      : [english ? 'Cancel' : '取消', opts.okLabel || (english ? 'OK' : '确定')];
     const { response } = await dialog.showMessageBox(mainWindow || undefined, {
       type: opts.type || 'question',
-      title: opts.title || '确认',
+      title: opts.title || (english ? 'Confirm' : '确认'),
       message: opts.message || '',
       detail: opts.detail || '',
-      buttons: ['取消', opts.okLabel || '确定'],
+      buttons,
       defaultId: 1,
       cancelId: 0,
       noLink: true,
@@ -2332,17 +2337,24 @@ function registerIpc() {
     const pass = { apply: false, aggressive: !!opts.aggressive, includeSnapshots: !!opts.includeSnapshots };
     if (!opts.apply) return runtime.cleanup(pass);
     const preview = await runtime.cleanup(pass);
+    const en = store.getSettings().language !== 'zh-CN';
+    const mb = (preview.candidates.reduce((n, c) => n + c.size, 0) / 1048576).toFixed(0);
     const { response } = await dialog.showMessageBox(mainWindow, {
       type: 'warning',
-      buttons: ['取消', `清理 ${preview.candidates.length} 项`],
+      buttons: en ? ['Cancel', `Clean up ${preview.candidates.length} items`] : ['取消', `清理 ${preview.candidates.length} 项`],
       defaultId: 0,
       cancelId: 0,
-      title: '确认清理运行时缓存',
-      message: `将释放约 ${(preview.candidates.reduce((n, c) => n + c.size, 0) / 1048576).toFixed(0)} MB`,
-      detail: (opts.includeSnapshots
-        ? '会先停止运行时，再删除旧镜像、当前 AVD 的快速启动快照、锁文件和非活动 AVD 的缓存。已安装的应用本身保留（只清快照），'
-        : '只删除旧镜像、旧快照、锁文件和非活动 AVD 的缓存，已安装的应用会保留。')
-        + '此操作不可撤销，建议先导出诊断报告。',
+      title: en ? 'Confirm runtime cache cleanup' : '确认清理运行时缓存',
+      message: en ? `About ${mb} MB will be freed` : `将释放约 ${mb} MB`,
+      detail: en
+        ? (opts.includeSnapshots
+          ? 'The runtime will stop first, then old images, the quick-boot snapshot of the current AVD, lock files and the cache of inactive AVDs are deleted. Installed apps themselves are kept (only snapshots are cleared). '
+          : 'Only old images, old snapshots, lock files and the cache of inactive AVDs are deleted; installed apps are kept. ')
+          + 'This cannot be undone; exporting a diagnostic report first is recommended.'
+        : (opts.includeSnapshots
+          ? '会先停止运行时，再删除旧镜像、当前 AVD 的快速启动快照、锁文件和非活动 AVD 的缓存。已安装的应用本身保留（只清快照），'
+          : '只删除旧镜像、旧快照、锁文件和非活动 AVD 的缓存，已安装的应用会保留。')
+          + '此操作不可撤销，建议先导出诊断报告。',
     });
     if (response !== 1) return { ...preview, cancelled: true };
     return runtime.cleanup({ apply: true, aggressive: !!opts.aggressive, includeSnapshots: !!opts.includeSnapshots });
