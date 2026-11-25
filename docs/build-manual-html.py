@@ -5,14 +5,42 @@
 import html
 import os
 import re
+import subprocess
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-SRC = os.path.join(HERE, 'USER-MANUAL.md')
-OUT = os.path.join(HERE, 'ApkStart-用户手册.html')
+
+# 用法：python docs/build-manual-html.py [zh|en|th]   不带参数 = 三种语言都生成
+# 中文：USER-MANUAL.md → docs/ApkStart-用户手册.html + src/ui/manual.html
+# 英文 / 泰语：USER-MANUAL.{en,th}.md → src/ui/manual.{en,th}.html（章节锚点按章节号生成：6.1 → s6-1）
+LANGS = {
+    'zh': dict(src='USER-MANUAL.md', html_lang='zh-CN', anchors='slug',
+               outs=[os.path.join(HERE, 'ApkStart-用户手册.html'), os.path.join(ROOT, 'src', 'ui', 'manual.html')],
+               title='ApkStart 产品使用手册与问题解决方案', toc='目录',
+               search='筛选目录（Ctrl+F 全文搜索）', print='打印 / 存为 PDF'),
+    'en': dict(src='USER-MANUAL.en.md', html_lang='en', anchors='number',
+               outs=[os.path.join(ROOT, 'src', 'ui', 'manual.en.html')],
+               title='ApkStart User Guide and Troubleshooting', toc='Contents',
+               search='Filter contents (Ctrl+F searches the full text)', print='Print / Save as PDF'),
+    'th': dict(src='USER-MANUAL.th.md', html_lang='th', anchors='number',
+               outs=[os.path.join(ROOT, 'src', 'ui', 'manual.th.html')],
+               title='คู่มือการใช้งาน ApkStart และวิธีแก้ปัญหา', toc='สารบัญ',
+               search='กรองสารบัญ (Ctrl+F ค้นหาทั้งเอกสาร)', print='พิมพ์ / บันทึกเป็น PDF'),
+}
+
+if len(sys.argv) < 2:
+    for code in LANGS:
+        subprocess.check_call([sys.executable, os.path.abspath(__file__), code])
+    sys.exit(0)
+
+LANG = sys.argv[1]
+if LANG not in LANGS:
+    sys.exit('未知语言 %r，可选：%s' % (LANG, ', '.join(LANGS)))
+CFG = LANGS[LANG]
+SRC = os.path.join(HERE, CFG['src'])
 # 0.6.2 起手册内嵌进软件：同一份 HTML 也要落到 src/ui，随包分发。
 # 主进程打开的就是这一份，绝不依赖 docs/ 或外部文件。
-APP_OUT = os.path.join(ROOT, 'src', 'ui', 'manual.html')
 
 with open(SRC, encoding='utf-8') as f:
     lines = f.read().split('\n')
@@ -28,6 +56,24 @@ def inline(s):
 
 def slug(text, used):
     base = re.sub(r'[^\w\u4e00-\u9fa5]+', '-', text).strip('-').lower() or 'sec'
+    s = base
+    i = 2
+    while s in used:
+        s = base + '-' + str(i)
+        i += 1
+    used.add(s)
+    return s
+
+
+def anchor_for(lvl, text, used):
+    if CFG['anchors'] == 'slug':
+        return slug(text, used)
+    # 译文：总标题 = overview；带章节号的标题 = s<号>（6.1 → s6-1）；其余用 sec<序号>
+    if lvl == 1:
+        used.add('overview')
+        return 'overview'
+    m = re.match(r'^(\d+(?:\.\d+)*)\.?\s', text)
+    base = ('s' + m.group(1).replace('.', '-')) if m else 'sec%d' % (len(used) + 1)
     s = base
     i = 2
     while s in used:
@@ -74,7 +120,7 @@ while i < n:
     if m:
         lvl = len(m.group(1))
         text = m.group(2).strip()
-        anchor = slug(text, used)
+        anchor = anchor_for(lvl, text, used)
         if lvl in (2, 3):
             toc.append((lvl, anchor, text))
         out.append('<h%d id="%s">%s</h%d>' % (lvl, anchor, inline(text), lvl))
@@ -151,11 +197,11 @@ for lvl, anchor, text in toc:
 toc_html = '\n'.join(toc_html)
 
 doc = '''<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="__LANG__">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ApkStart 产品使用手册与问题解决方案</title>
+<title>__TITLE__</title>
 <style>
 :root{--bg:#ffffff;--fg:#1f2328;--mut:#57606a;--line:#d0d7de;--code:#eff1f3;--accent:#0969da;--accent-soft:#ddf4ff;--warn:#9a6700;--warn-bg:#fff8c5;--head:#f6f8fa;--tbl:#f6f8fa}
 *{box-sizing:border-box}
@@ -197,15 +243,15 @@ tbody tr:nth-child(even){background:#fbfcfd}
 </head>
 <body>
 <div class="wrap">
-<aside><h2>目录</h2>
-<input id="tocSearch" type="search" placeholder="筛选目录（Ctrl+F 全文搜索）" autocomplete="off" />
+<aside><h2>__TOCTITLE__</h2>
+<input id="tocSearch" type="search" placeholder="__SEARCH__" autocomplete="off" />
 <div id="tocList">__TOC__</div>
 </aside>
 <main>
 __BODY__
 </main>
 </div>
-<div class="btnbar"><button onclick="window.print()">打印 / 存为 PDF</button></div>
+<div class="btnbar"><button onclick="window.print()">__PRINT__</button></div>
 <script>
 (function () {
   var input = document.getElementById('tocSearch');
@@ -226,8 +272,10 @@ __BODY__
 </html>
 '''
 
-doc = doc.replace('__TOC__', toc_html).replace('__BODY__', body)
-for target in (OUT, APP_OUT):
+doc = (doc.replace('__TOC__', toc_html).replace('__BODY__', body)
+       .replace('__LANG__', CFG['html_lang']).replace('__TITLE__', html.escape(CFG['title']))
+       .replace('__TOCTITLE__', CFG['toc']).replace('__SEARCH__', CFG['search']).replace('__PRINT__', CFG['print']))
+for target in CFG['outs']:
     with open(target, 'w', encoding='utf-8') as f:
         f.write(doc)
     print('生成:', target)

@@ -22,6 +22,13 @@ let OUT = process.env.APKSTART_PACK_OUT
   : path.join(ROOT, 'dist', FULL ? `ApkStart-v${PKG.version}-win64-full` : 'ApkStart-win64-portable');
 const ELECTRON_DIST = path.join(ROOT, 'node_modules', 'electron', 'dist');
 
+/** Windows 文件版本必须是 a.b.c.d 四段数字：取版本号里的前四段数字，不足补 0（0.6.4 → 0.6.4.0，0.6.4.1 → 0.6.4.1） */
+function fileVersion(v) {
+  const p = String(v).split(/[.\-+]/).filter((x) => /^\d+$/.test(x)).slice(0, 4);
+  while (p.length < 4) p.push('0');
+  return p.join('.');
+}
+
 // Windows 上 fs.cpSync 复制「大量小文件 + 大镜像」的目录树时会偶发
 // EINPROGRESS（Node 错误地报成 "not enough space on the disk"，实际磁盘还剩上百 G）。
 // 改用逐文件 copyFileSync 的朴素递归：慢一点点，但每个文件都是独立 syscall，
@@ -237,8 +244,9 @@ function embedExeMeta(exe) {
   const args = [
     exe,
     '--set-icon', ico,
-    // 四段式文件版本（和 MSIX 的口径一致），产品版本用三段式
-    '--set-file-version', `${PKG.version}.0`,
+    // 四段式文件版本（和 MSIX 的口径一致）。本 fork 的版本号本身就是四段（0.6.4.1：上游版本 + fork 序号），
+    // 不能再拼一个 .0；带 -suffix 的写法也只取数字段。产品版本保持 package.json 原样。
+    '--set-file-version', fileVersion(PKG.version),
     '--set-product-version', PKG.version,
     '--set-version-string', 'ProductName', 'ApkStart',
     '--set-version-string', 'FileDescription', 'ApkStart 安卓应用运行器',

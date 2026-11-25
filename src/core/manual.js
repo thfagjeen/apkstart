@@ -128,4 +128,55 @@ function resolve(payload) {
   };
 }
 
-module.exports = { TOPICS, ISSUE_MAP, topicForIssue, topicForError, topicByText, resolve };
+/**
+ * 多语言手册：docs/USER-MANUAL.{en,th}.md 由 docs/build-manual-html.py 生成 src/ui/manual.{en,th}.html。
+ * 译文的章节锚点不用标题文字，而是按章节号生成（6.1 → s6-1，8 → s8，总标题 → overview），
+ * 所以这里只需要「主题 → 章节号」一张表，不依赖译文怎么写标题。
+ */
+const SECTIONS = Object.freeze({
+  overview: '', accel: '6-1', install: '6-2', arm: '6-3', adb: '6-4', startup: '6-5', other: '6-6',
+  sound: '6-7', dll: '6-8', mic: '6-9', gpu: '6-10', diagnose: '5-4', settings: '3-6', storage: '8', network: '5-2',
+});
+
+const TITLES = Object.freeze({
+  en: {
+    overview: 'Contents', accel: 'Hardware acceleration disabled / slow startup', install: 'Installation failed (INSTALL_FAILED_*)',
+    arm: 'ARM translation layer / ARM apps will not install', adb: 'adb not authorized (Allow USB debugging)',
+    startup: 'Icon does nothing / window with a rotate button', other: 'Other startup problems', sound: 'No sound / sound is quiet',
+    dll: 'Store edition fails to start / 0xC0000135', mic: 'Microphone unavailable / recording fails', gpu: 'Discrete / integrated GPU (GPU preference)',
+    diagnose: 'Built-in guide and automatic tutorials', settings: 'Settings navigation', storage: 'Data and folder locations',
+    network: 'Automatic checks and network repair',
+  },
+  th: {
+    overview: 'สารบัญ', accel: 'ยังไม่ได้เปิดการเร่งความเร็วด้วยฮาร์ดแวร์ / เปิดเครื่องช้า', install: 'ติดตั้งไม่สำเร็จ (INSTALL_FAILED_*)',
+    arm: 'เลเยอร์แปล ARM / แอป ARM ติดตั้งไม่ได้', adb: 'adb ยังไม่ได้รับอนุญาต (อนุญาตการดีบักผ่าน USB)',
+    startup: 'ดับเบิลคลิกไอคอนแล้วไม่ตอบสนอง / หน้าต่างที่มีปุ่มหมุน', other: 'ปัญหาการเริ่มต้นอื่นๆ', sound: 'แอปไม่มีเสียง / เสียงเบา',
+    dll: 'รุ่น Store เริ่มไม่ขึ้น / 0xC0000135', mic: 'ใช้ไมโครโฟนไม่ได้ / บันทึกเสียงไม่ได้', gpu: 'การ์ดจอแยก / ออนบอร์ด (การ์ดจอที่ใช้)',
+    diagnose: 'คู่มือในตัวและบทช่วยสอนอัตโนมัติ', settings: 'การนำทางในหน้าตั้งค่า', storage: 'คำอธิบายข้อมูลและโฟลเดอร์',
+    network: 'ตรวจสอบอัตโนมัติและซ่อมแซมเครือข่าย',
+  },
+});
+
+/**
+ * 按界面语言挑手册文件与锚点（纯函数）。中文用原来的 manual.html + 中文锚点；
+ * 泰语用 manual.th.html；其它语言一律用英文版。文件名和锚点都来自这里的白名单，渲染层传不进来。
+ */
+function localize(topic, language) {
+  const t = topic && TOPICS[topic.id] ? TOPICS[topic.id] : TOPICS.overview;
+  if (language === 'zh-CN') {
+    return { lang: 'zh-CN', file: 'manual.html', anchor: t.anchor, title: t.title, windowTitle: `ApkStart 使用手册 · ${t.title}` };
+  }
+  const lang = language === 'th' ? 'th' : 'en';
+  const section = SECTIONS[t.id];
+  const title = TITLES[lang][t.id];
+  const prefix = lang === 'th' ? 'คู่มือ ApkStart' : 'ApkStart User Guide';
+  return {
+    lang,
+    file: `manual.${lang}.html`,
+    anchor: section ? `s${section}` : '',
+    title,
+    windowTitle: `${prefix} · ${title}`,
+  };
+}
+
+module.exports = { TOPICS, SECTIONS, TITLES, ISSUE_MAP, topicForIssue, topicForError, topicByText, resolve, localize };

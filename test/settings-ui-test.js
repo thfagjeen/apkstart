@@ -292,8 +292,8 @@ app.whenReady().then(async () => {
     localizationBehavior.chineseToast.join(' ') === '界面语言已更改 界面已切换为简体中文。' &&
     localizationBehavior.englishToast.join(' ') === 'Interface language changed The interface is now in English.',
     `中文：${localizationBehavior.chineseToast.join(' / ')}；英文：${localizationBehavior.englishToast.join(' / ')}`);
-  step('可选择 10 种新增语言且西班牙语会切换界面',
-    localizationBehavior.availableLanguages.join(',') === 'en,zh-CN,es,fr,de,ja,ko,pt,ru,hi,ar,id' &&
+  step('可选择 11 种新增语言且西班牙语会切换界面',
+    localizationBehavior.availableLanguages.join(',') === 'en,zh-CN,th,es,fr,de,ja,ko,pt,ru,hi,ar,id' &&
     localizationBehavior.localeCoverage &&
     localizationBehavior.spanishUi.lang === 'es' &&
     localizationBehavior.spanishUi.title === 'Configuración' &&
@@ -302,6 +302,28 @@ app.whenReady().then(async () => {
     localizationBehavior.arabicDirection.lang === 'ar' &&
     localizationBehavior.arabicDirection.dir === 'rtl',
     `${localizationBehavior.availableLanguages.join(', ')} / ${JSON.stringify(localizationBehavior.spanishUi)}`);
+  const thai = await evalJs(`({ title: apkstartI18n.translate('设置', 'th'), plain: (() => { const before = uiLanguage; uiLanguage = 'th'; const out = localizedText('停止运行时'); uiLanguage = before; return out; })() })`);
+  step('泰语目录可用（设置 / 停止运行时）', thai.title === 'การตั้งค่า' && thai.plain === 'หยุดรันไทม์', JSON.stringify(thai));
+  // 安装失败的原因由 core/adb.js 生成中文，渲染层要能翻成英文 / 泰语（带「（INSTALL_*）」尾巴）
+  const adbMod = require(path.join(__dirname, '..', 'src', 'core', 'adb.js'));
+  const installMessages = ['OLDER_SDK', 'NO_MATCHING_ABIS', 'VERSION_DOWNGRADE'].map((c) => adbMod.friendlyInstallError(`Failure [INSTALL_FAILED_${c}]`));
+  const launchMessage = adbMod.friendlyLaunchError('UnsatisfiedLinkError', 'com.example.app');
+  const errorText = await evalJs(`(() => {
+    const before = uiLanguage;
+    const out = {};
+    for (const lang of ['en', 'th']) {
+      uiLanguage = lang;
+      out[lang] = ${JSON.stringify([...installMessages, launchMessage])}.map((s) => localizedText(s));
+    }
+    uiLanguage = before;
+    return out;
+  })()`);
+  const hasCjk = (list) => list.some((s) => /[㐀-鿿]/.test(s));
+  step('安装失败 / 启动失败原因翻成英文与泰语且保留 INSTALL_* 码',
+    !hasCjk(errorText.en) && !hasCjk(errorText.th) &&
+    errorText.en[0].endsWith('(INSTALL_FAILED_OLDER_SDK)') && errorText.th[0].endsWith('(INSTALL_FAILED_OLDER_SDK)') &&
+    errorText.en[1].startsWith('Installation failed:') && errorText.th[1].startsWith('ติดตั้งไม่สำเร็จ:'),
+    errorText.en[0]);
   step('数据分区摘要、下载前缀占位符和提示计数使用英文',
     localizationBehavior.dataNote.startsWith('Current data partition: Not created (automatic) · Free disk space: 20.9 GB.') &&
     localizationBehavior.mirrorPlaceholder === 'e.g. https://ghfast.top/' &&

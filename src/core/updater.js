@@ -1,6 +1,6 @@
 'use strict';
 /**
- * 在线更新：从 GitHub Releases（RoutineMiku/apkstart）取最新版本，下载并原地替换。
+ * 在线更新：从 GitHub Releases（本 fork：thfagjeen/apkstart）取最新版本，下载并原地替换。
  *
  * 三个形态都要照顾到：
  *   - 安装版（NSIS）：下载 `ApkStart-x.y.z-Setup.exe`，静默安装（/S）；
@@ -23,8 +23,12 @@ const { cmpVer } = require('./version');
 const { Sources } = require('./sources');
 const inc = require('./incremental');
 
-const OWNER = 'RoutineMiku';
+// 本 fork 的更新只看自己的 GitHub 发行版，不看上游（RoutineMiku）和 Gitee：
+// 否则上游一发新版，「立即更新」就会把 fork 里的多语言等改动整个换掉。
+// 运行时整包等资源仍由 provision.js 按上游默认值下载，不受这里影响。
+const OWNER = 'thfagjeen';
 const REPO = 'apkstart';
+const UPDATE_REPOS = { github: { owner: OWNER, repo: REPO }, gitee: null };
 
 /** PowerShell 单引号字符串：内部的 ' 要写成 '' */
 function psq(s) {
@@ -75,7 +79,7 @@ class Updater {
     this.electronVersion = o.electronVersion || '';
     this.settings = typeof o.settings === 'function' ? o.settings : () => (o.settings || {});
     // settings() 给 sources 用：决定「走 GitHub 还是 Gitee」「有没有镜像前缀」
-    this.sources = new Sources(this.settings);
+    this.sources = new Sources(this.settings, UPDATE_REPOS);
     this.latest = null;
     this._last = null;
   }
@@ -98,7 +102,35 @@ class Updater {
    *        （用户主动点「检查更新」应该拿到最新结果；启动时的静默检查走缓存）
    */
   async check(opts = {}) {
-    const merged = await this.sources.latest({ force: !!opts.force });
+    let merged;
+    try {
+      merged = await this.sources.latest({ force: !!opts.force });
+    } catch (e) {
+      // fork 还没发布过任何版本：当作「已是最新」，不要让界面报「检查失败」
+      if (e && e.code === 'NO_RELEASES') {
+        this.latest = {
+          version: this.current,
+          tag: `v${this.current}`,
+          name: `v${this.current}`,
+          notes: '',
+          htmlUrl: Updater.repoUrl(),
+          publishedAt: '',
+          asset: null,
+          assets: [],
+          sources: [],
+          unreachable: [],
+          flavor: this.flavor,
+          hasUpdate: false,
+          current: this.current,
+          canAutoApply: false,
+          incremental: null,
+          noReleases: true,
+        };
+        this._last = this.latest;
+        return this.latest;
+      }
+      throw e;
+    }
     const pick = (re) => merged.assets.find((a) => re.test(String(a.name || '')));
     // 发行版里同时挂着「便携包」和「运行时整包」（ApkStart-runtime-*.zip）。
     // 兜底的 .zip 匹配必须把运行时整包排除掉：某次发布如果只有运行时整包、

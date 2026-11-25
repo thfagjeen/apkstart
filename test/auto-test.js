@@ -1516,6 +1516,17 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(cmpVer('1.0.0', '1.0.1') === -1, '1.0.0 小于 1.0.1');
   });
 
+  await test('fork 版本号 = 上游版本 + 第四段序号（0.6.4.1）：比上游同版本新，比上游下一版旧', () => {
+    const { cmpVer } = require('../src/core/updater');
+    assert(cmpVer('0.6.4.1', '0.6.4') === 1, '0.6.4.1 应大于上游 0.6.4');
+    assert(cmpVer('v0.6.4.1', '0.6.4') === 1, 'tag 带 v 前缀也一样');
+    assert(cmpVer('0.6.4.2', '0.6.4.1') === 1 && cmpVer('0.6.4.10', '0.6.4.2') === 1, '序号按数字比较');
+    assert(cmpVer('0.6.5', '0.6.4.9') === 1, '上游 0.6.5 应大于 fork 的 0.6.4.x');
+    assert(cmpVer('0.6.5.1', '0.6.5') === 1, '合并上游新版后 0.6.5.1 大于 0.6.5');
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+    assert(/^\d+\.\d+\.\d+\.\d+$/.test(pkg.version), `package.json 版本应为四段数字，实际 ${pkg.version}`);
+  });
+
   await test('安装形态决定挑哪个资产：安装版=Setup.exe，便携版=portable.zip', () => {
     const { Updater } = require('../src/core/updater');
     const dir = path.join(TMP, 'upd-setup');
@@ -2603,7 +2614,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     }
     // exe 的文件版本也要用同一个号（四段），别和 package.json 各说各话
     const packJs = fs.readFileSync(path.join(root, 'build', 'pack.js'), 'utf8');
-    assert(/\$\{PKG\.version\}\.0/.test(packJs), 'exe 文件版本要跟 package.json 对齐');
+    assert(/fileVersion\(PKG\.version\)/.test(packJs), 'exe 文件版本要由 package.json 的版本号算出（fileVersion）');
     // 商店包和 exe 用的是同一个版本来源，不该有第二份硬编码版本号
     const msixJs = fs.readFileSync(path.join(root, 'build', 'msix.js'), 'utf8');
     assert(/const VERSION = String\(pkg\.version/.test(msixJs), 'MSIX 版本号必须取自 package.json');
@@ -2894,6 +2905,39 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     const ui = fs.readFileSync(path.join(root, 'src', 'ui', 'app.js'), 'utf8');
     const f = ui.slice(ui.indexOf('function friendlyInstallErrorText'), ui.indexOf('function friendlyInstallErrorText') + 900);
     assert(!/NO_MATCHING_ABIS/i.test(f) || /正在|已切换到/.test(f.slice(f.indexOf('NO_MATCHING_ABIS'), f.indexOf('NO_MATCHING_ABIS') + 320)), '失败横幅文案要说清状态，不能只说「正在重试」');
+  });
+
+  // —— fork：更新源只指向本 fork，运行时资源仍用上游 ——
+  await test('更新只看本 fork 的 GitHub（不看上游、不看 Gitee）；Sources 默认值仍是上游（运行时下载用）', async () => {
+    const { Updater, OWNER, REPO } = require('../src/core/updater');
+    const { Sources } = require('../src/core/sources');
+    const u = new Updater({
+      currentVersion: '0.6.4', exePath: path.join(TMP, 'A.exe'), isPackaged: false, dataDir: TMP, settings: () => ({}),
+    });
+    assert(OWNER === 'thfagjeen' && REPO === 'apkstart', `更新仓库应为 fork，实际 ${OWNER}/${REPO}`);
+    assert(u.sources.defs.github.web === 'https://github.com/thfagjeen/apkstart', `更新源应指向 fork，实际 ${u.sources.defs.github.web}`);
+    assert(!u.sources.defs.gitee, '更新不应再看 Gitee（fork 没有 Gitee 镜像，会拿到上游的新版本）');
+    assert(Updater.repoUrl() === 'https://github.com/thfagjeen/apkstart/releases', `发布页应是 fork，实际 ${Updater.repoUrl()}`);
+    const d = new Sources(() => ({}));
+    assert(d.defs.github.web === 'https://github.com/RoutineMiku/apkstart' && d.defs.gitee.web === 'https://gitee.com/daily-miku/apkstart',
+      '默认 Sources（provision 下载运行时整包用）必须保持上游，fork 没有运行时整包');
+  });
+
+  await test('fork 没有任何发行版（所有源 404）时当作「已是最新」，而不是报「检查失败」', async () => {
+    const { Updater } = require('../src/core/updater');
+    const u = new Updater({
+      currentVersion: '0.6.4', exePath: path.join(TMP, 'A.exe'), isPackaged: false, dataDir: TMP, settings: () => ({}),
+    });
+    // 不打网络：fetchReleases 换成「只有 GitHub，且 404」
+    u.sources.fetchReleases = async () => [{ source: 'github', name: 'GitHub', web: u.sources.defs.github.web, error: 'api.github.com 404' }];
+    const info = await u.check({ force: true });
+    assert(info.hasUpdate === false && info.noReleases === true, '没有发行版应返回 hasUpdate=false');
+    assert(info.current === '0.6.4' && !info.asset, '不应带安装包');
+    // 其它错误（比如连不上）仍然要报错，不能被当成「已是最新」
+    u.sources.fetchReleases = async () => [{ source: 'github', name: 'GitHub', web: '', error: '连接超时' }];
+    let threw = false;
+    try { await u.check({ force: true }); } catch (e) { threw = !e.code; }
+    assert(threw, '连不上更新服务器时必须报错');
   });
 
   console.log(results.join('\n'));

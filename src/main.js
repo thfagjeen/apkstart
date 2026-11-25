@@ -970,8 +970,10 @@ function openManual(payload = {}) {
         if (/^https?:\/\//i.test(url)) shell.openExternal(url);
       });
     }
-    manualWindow.setTitle(`ApkStart 使用手册 · ${target.title}`);
-    manualWindow.loadFile(path.join(__dirname, 'ui', 'manual.html'), { hash: target.anchor });
+    // 按界面语言选手册文件（中文 / 泰语 / 其它语言用英文版）和对应锚点
+    const view = manual.localize(target, store.getSettings().language);
+    manualWindow.setTitle(view.windowTitle);
+    manualWindow.loadFile(path.join(__dirname, 'ui', view.file), view.anchor ? { hash: view.anchor } : undefined);
     manualWindow.once('ready-to-show', () => {
       if (!manualWindow || manualWindow.isDestroyed()) return;
       manualWindow.show();
@@ -979,7 +981,7 @@ function openManual(payload = {}) {
     });
     // 已经显示过的窗口再 loadFile 不会重新触发 ready-to-show
     if (manualWindow.isVisible()) manualWindow.focus();
-    appLog(`manual open ${target.id}#${target.anchor} reason=${target.reason || 'manual'}`);
+    appLog(`manual open ${target.id}#${view.anchor} (${view.file}) reason=${target.reason || 'manual'}`);
   } catch (e) {
     appLog(`manual open failed: ${e && e.message}`);
     // 手册打不开也不能影响修复流程：至少给个能点的在线地址
@@ -1182,8 +1184,8 @@ function buildTray() {
       },
     ]);
     tray.setContextMenu(menu);
+    tray.setToolTip(english ? 'ApkStart — Android app player' : 'ApkStart — 安卓应用运行器');
   };
-  tray.setToolTip('ApkStart — 安卓应用运行器');
   // Windows 托盘的惯例是单击就打开主窗口（双击当然也可以）。
   // 之前只绑了 double-click，用户单击没反应，会以为托盘图标坏了。
   // 右键才出菜单，所以这里单击直接 showWindow 不会和菜单冲突。

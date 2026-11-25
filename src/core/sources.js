@@ -212,9 +212,30 @@ function mirrorList(settings) {
   return KNOWN_MIRRORS.slice();
 }
 
+/**
+ * 按实例覆盖仓库。默认就是上游（运行时整包等资源只在上游发布，provision.js 用默认值）。
+ * repos.github = { owner, repo }；repos.gitee = null 表示完全不用 Gitee；repos.gitee = { owner, repo } 则换仓库。
+ */
+function buildDefs(repos) {
+  const r = repos || {};
+  const defs = { github: { ...SOURCES.github }, gitee: { ...SOURCES.gitee } };
+  if (r.github) {
+    defs.github.api = `https://api.github.com/repos/${r.github.owner}/${r.github.repo}`;
+    defs.github.web = `https://github.com/${r.github.owner}/${r.github.repo}`;
+  }
+  if (r.gitee === null) {
+    delete defs.gitee;
+  } else if (r.gitee) {
+    defs.gitee.api = `https://gitee.com/api/v5/repos/${r.gitee.owner}/${r.gitee.repo}`;
+    defs.gitee.web = `https://gitee.com/${r.gitee.owner}/${r.gitee.repo}`;
+  }
+  return defs;
+}
+
 class Sources {
-  constructor(settingsFn) {
+  constructor(settingsFn, repos) {
     this.settings = typeof settingsFn === 'function' ? settingsFn : () => ({});
+    this.defs = buildDefs(repos);
     this._rankCache = new Map();   // url -> {at, speed, ok}
     this._rankTtl = 30 * 60 * 1000;
     // 版本检查结果缓存：Gitee 的匿名调用限流很紧（连续几次就 403），
@@ -246,7 +267,7 @@ class Sources {
    *   ApkStart-<tag>-win64-portable.zip / ApkStart-<version>-Setup.exe / ApkStart-runtime-<tag>.zip
    */
   async _releaseTagViaRedirect(id) {
-    const s = SOURCES[id];
+    const s = this.defs[id];
     const page = `${s.web}/releases/latest`;
     const res = await openUrl(page, { timeout: 9000, followRedirect: false });
     const loc = String(res.headers.location || '');
@@ -257,7 +278,7 @@ class Sources {
 
   /** 用 tag 拼一份「最小可用」的 release（没有 API 时用） */
   _syntheticRelease(id, tag) {
-    const s = SOURCES[id];
+    const s = this.defs[id];
     const ver = String(tag).replace(/^v/i, '');
     const names = [
       `ApkStart-${tag}-win64-portable.zip`,
@@ -286,7 +307,8 @@ class Sources {
 
   async fetchReleases() {
     const prefs = String((this.settings().runtime || {}).sourcePreference || 'auto');
-    const ids = prefs === 'github' || prefs === 'gitee' ? [prefs] : ['github', 'gitee'];
+    let ids = (prefs === 'github' || prefs === 'gitee' ? [prefs] : ['github', 'gitee']).filter((id) => this.defs[id]);
+    if (!ids.length) ids = ['github'];
     // 公开仓库的 releases 接口匿名就能读；仓库若是私有的，Gitee 会回 404
     // "Not Found Project"（而不是 401），那种情况才需要在这里填一个只读 token。
     // 另外匿名调用有频率限制，感兴趣的用户可以填 token 提高额度。
@@ -296,7 +318,7 @@ class Sources {
       : url);
 
     const jobs = ids.map(async (id) => {
-      const s = SOURCES[id];
+      const s = this.defs[id];
       const skip = this.blockedReason(id);
       if (skip) return { source: id, name: s.name, web: s.web, error: skip };
       try {
@@ -351,6 +373,11 @@ class Sources {
       // 全挂了但手里有上一次的结果：宁可给一份「可能是旧的」版本信息，
       // 也不要让界面直接报错 —— 用户至少还能看到当前版本和发布页入口。
       if (cached.value) return { ...cached.value, stale: true, staleReason: why };
+      if (all.length && all.every((x) => x && x.error && /\b404\b/.test(x.error))) {
+        const e = new Error(`没有找到任何发行版（${why}）`);
+        e.code = 'NO_RELEASES';
+        throw e;
+      }
       throw new Error(`连不上更新服务器（${why}）`);
     }
     ok.sort((a, b) => cmpVer(b.rel.tag_name || b.rel.name, a.rel.tag_name || a.rel.name));

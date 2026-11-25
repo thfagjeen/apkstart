@@ -38,6 +38,58 @@ test('每个主题的锚点都存在于随包 HTML', () => {
   }
 });
 
+console.log('\n[内置手册 · 多语言（英文 / 泰语）]');
+const stripScript = (h) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '');
+const translated = {
+  en: fs.readFileSync(path.join(ROOT, 'src/ui/manual.en.html'), 'utf8'),
+  th: fs.readFileSync(path.join(ROOT, 'src/ui/manual.th.html'), 'utf8'),
+};
+const headingIds = (h) => [...h.matchAll(/<h[1-4] id="([^"]+)"/g)].map((m) => m[1]);
+
+test('英文 / 泰语手册的每个主题锚点（按章节号）都存在', () => {
+  for (const lang of ['en', 'th']) {
+    for (const topic of Object.values(manual.TOPICS)) {
+      const view = manual.localize(topic, lang);
+      const id = view.anchor || 'overview';
+      assert(translated[lang].includes(`id="${id}"`), `${lang}: ${topic.id} 的锚点 ${id} 不存在`);
+    }
+  }
+});
+
+test('三种语言的标题数量一致，译文内部链接没有断链', () => {
+  const zhCount = headingIds(html).length;
+  for (const lang of ['en', 'th']) {
+    const ids = headingIds(translated[lang]);
+    assert(ids.length === zhCount, `${lang} 标题数 ${ids.length} 与中文 ${zhCount} 不一致`);
+    const links = [...translated[lang].matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+    const broken = links.filter((l) => !ids.includes(l));
+    assert(broken.length === 0, `${lang} 断链：${broken.join(', ')}`);
+  }
+});
+
+test('译文页面可见文字里没有残留中文，且标注 v0.6.4', () => {
+  for (const lang of ['en', 'th']) {
+    const visible = stripScript(translated[lang]);
+    assert(!/[㐀-鿿]/.test(visible), `${lang} 手册里仍有中文`);
+    assert(visible.includes('v0.6.4'), `${lang} 手册应标注 v0.6.4`);
+  }
+  assert(translated.en.includes('<html lang="en">') && translated.th.includes('<html lang="th">'), 'html lang 属性应匹配');
+});
+
+test('localize 按界面语言选文件：中文 / 泰语 / 其它语言走英文', () => {
+  const topic = manual.TOPICS.accel;
+  const zh = manual.localize(topic, 'zh-CN');
+  assert(zh.file === 'manual.html' && zh.anchor === topic.anchor, '中文应用原手册与中文锚点');
+  const th = manual.localize(topic, 'th');
+  assert(th.file === 'manual.th.html' && th.anchor === 's6-1', `泰语应为 manual.th.html#s6-1，实际 ${th.file}#${th.anchor}`);
+  for (const lang of ['en', 'es', 'ja', 'xx', undefined]) {
+    const v = manual.localize(topic, lang);
+    assert(v.file === 'manual.en.html' && v.anchor === 's6-1', `${lang} 应落到英文手册 #s6-1，实际 ${v.file}#${v.anchor}`);
+  }
+  assert(manual.localize(manual.TOPICS.overview, 'en').anchor === '', '目录页不带锚点');
+  assert(manual.localize({ id: 'not-a-topic' }, 'th').file === 'manual.th.html', '未知主题回到目录页');
+});
+
 test('手册正文包含 0.6.4 版本号与声音章节', () => {
   assert(html.includes('v0.6.4'), '手册应标注 v0.6.4');
   assert(html.includes('应用没有声音'), '手册应有声音排障章节');
@@ -138,7 +190,8 @@ test('主进程注册了 manual:open，preload 暴露了 openManual', () => {
   const preload = fs.readFileSync(path.join(ROOT, 'src', 'preload.js'), 'utf8');
   assert(/ipcMain\.handle\('manual:open'/.test(main), '主进程未注册 manual:open');
   assert(/openManual:\s*\(payload\)/.test(preload), 'preload 未暴露 openManual');
-  assert(/new BrowserWindow\([\s\S]*manual\.html/.test(main), '主进程未创建手册窗口');
+  assert(/new BrowserWindow\([\s\S]*manual\.localize\(/.test(main), '主进程未创建手册窗口');
+  assert(/loadFile\(path\.join\(__dirname, 'ui', view\.file\)/.test(main), '主进程应按语言加载 view.file');
 });
 
 test('标题栏 / 关于页都有手册入口', () => {

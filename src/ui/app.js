@@ -573,7 +573,7 @@ const UI_TEXT = {
   '可整体搬过去再删。': ' can be moved as a whole, then deleted from the old location.',
   '卸载会取消 .apk 关联并移除程序；便携版请按提示手动删除目录。': 'Uninstalling removes the .apk association and the app. For the portable edition, follow the prompts to delete its folder manually.',
   '已是最新版本（v0.6.0）': 'You are up to date (v0.6.0)',
-  '从 GitHub（RoutineMiku/apkstart）获取最新版本；轻量版会下载便携包并自动替换程序文件， 运行时、已装应用与快照都不受影响。': 'Get the latest release from GitHub (RoutineMiku/apkstart). The lightweight edition downloads a portable package and replaces the app files; the runtime, installed apps, and snapshots are preserved.',
+  '从 GitHub（thfagjeen/apkstart）获取最新版本；轻量版会下载便携包并自动替换程序文件， 运行时、已装应用与快照都不受影响。': 'Get the latest release from GitHub (thfagjeen/apkstart). The lightweight edition downloads a portable package and replaces the app files; the runtime, installed apps, and snapshots are preserved.',
   '抖音 · 日常MIKU': 'TikTok · Daily MIKU',
   '双击即装的 Windows 安卓应用启动器：APK 安装、桌面快捷方式、独立窗口运行、文件双向互通。': 'A Windows Android app launcher: install APKs, create desktop shortcuts, run apps in separate windows, and share files both ways.',
   '抖音 · @日常MIKU（联系作者）': 'TikTok · @DailyMIKU (contact the author)',
@@ -627,7 +627,7 @@ const UI_TEXT = {
   '决定安卓虚拟机吃多少 CPU、画面多细腻。红果/抖音发卡就切「流畅」，只想挂着跑小应用就切「省资源」。改完下一次打开应用生效。': 'Controls Android CPU usage and image quality. Choose Smooth for video or games, or Save resources for lightweight apps running in the background. Changes take effect the next time you open an app.',
   '游戏模式会让安卓虚拟机保持较高 CPU 优先级并减少宿主侧轮询，输入与画面延迟最低；代价是整机其他程序会变慢。没有应用窗口时容器仍会自动降优先级停放。': 'Game mode gives the Android virtual machine higher CPU priority and reduces host polling for lower input and display latency. Other programs may run more slowly. When no app window is open, the container automatically lowers its priority.',
   '第二次打开应用只要几秒，代价是磁盘上多一份约 2–3 GB 的 ram.bin。磁盘紧张可以关掉：只影响启动速度，不影响应用与存档。': 'Subsequent launches take only a few seconds, at the cost of an extra 2–3 GB ram.bin file. Disable this if disk space is limited; only startup speed is affected, not apps or saves.',
-  '从 GitHub（RoutineMiku/apkstart）获取最新版本；轻量版会下载便携包并自动替换程序文件，运行时、已装应用与快照都不受影响。': 'Check GitHub (RoutineMiku/apkstart) for the latest version. The lightweight edition downloads a portable package and replaces the app files; your runtime, apps, and snapshots are preserved.',
+  '从 GitHub（thfagjeen/apkstart）获取最新版本；轻量版会下载便携包并自动替换程序文件，运行时、已装应用与快照都不受影响。': 'Check GitHub (thfagjeen/apkstart) for the latest version. The lightweight edition downloads a portable package and replaces the app files; your runtime, apps, and snapshots are preserved.',
   '设置项：横屏 / 内存 / 代理 / 快照…': 'Search settings: orientation / memory / proxy / snapshots…',
   '搜索设置项：横屏 / 内存 / 代理 / 快照…': 'Search settings: orientation / memory / proxy / snapshots…',
   '留空 = 桌面': 'Leave blank to use the Desktop',
@@ -1030,6 +1030,25 @@ const UI_TEXT = {
   '只删除「旧版本程序目录 / 已失效的卸载项 / 更新临时文件」，当前正在运行的版本和你的应用数据都不会动。': 'Only removes “old-version program folders / stale uninstall entries / temporary update files”. The version currently running and your app data are not touched.',
   '取消': 'Cancel',
   '开始清理': 'Start cleanup',
+  // —— 补译 3：安装失败原因（src/core/adb.js 的 friendlyInstallError）——
+  "安装失败：这个应用只提供 ARM 原生库（多数国产应用如此），当前系统镜像没有 ARM 转译层。ApkStart 会自动切换到内置新版翻译层的兼容镜像并重试。": "Installation failed: this app provides only ARM native libraries (as most Chinese apps do), and the current system image has no ARM translation layer. ApkStart will automatically switch to the compatibility image with the newer translation layer and retry.",
+  "安装失败：应用要求的 Android 版本高于当前运行时（需更高系统镜像）。": "Installation failed: the app requires a newer Android version than the current runtime (a newer system image is needed).",
+  "安装失败：APK 没有有效签名，无法安装。": "Installation failed: the APK has no valid signature and cannot be installed.",
+  "安装失败：与已安装版本签名不一致，请先卸载旧版再装。": "Installation failed: the signature differs from the installed version; uninstall the old version first, then install.",
+  "安装失败：设备上已安装更高版本，不能降级覆盖。": "Installation failed: a newer version is already installed on the device and cannot be overwritten by a downgrade.",
+  "安装失败：运行时磁盘空间不足，请清理后重试。": "Installation failed: not enough disk space for the runtime; clean up and try again.",
+  "安装失败：APK 文件损坏或不完整（可能下载未完成），请重新获取。": "Installation failed: the APK file is damaged or incomplete (the download may not have finished); please get it again.",
+  "安装失败：APK 路径含特殊字符，请把文件移到纯英文路径后重试。": "Installation failed: the APK path contains special characters; move the file to an English-only path and try again.",
+  "安装失败：已存在同名应用且签名不同，请先卸载。": "Installation failed: an app with the same name but a different signature already exists; uninstall it first.",
+  "安装失败：与已安装版本签名不一致，请先卸载旧版。": "Installation failed: the signature differs from the installed version; uninstall the old version first.",
+  "安装失败：这是面向很老 Android 版本的应用（targetSdk 过低），Android 14 默认禁止安装。ApkStart 会自动用官方绕过参数重试。": "Installation failed: this app targets a very old Android version (targetSdk too low), which Android 14 blocks by default. ApkStart will retry automatically with the official bypass option.",
+  "安装失败：这是仅供测试的应用包，已自动加上测试包参数重试。": "Installation failed: this is a test-only package; the test-package option was added automatically and it is being retried.",
+  "安装失败：应用依赖的设备特性（如特定厂商库）在当前运行时不存在。": "Installation failed: a device feature the app depends on (such as a specific vendor library) does not exist in the current runtime.",
+  "安装失败：系统限制了安装，请重启运行时后重试。": "Installation failed: the system restricted the installation; restart the runtime and try again.",
+  "安装失败：与已有应用的 ContentProvider 冲突，请卸载冲突应用。": "Installation failed: conflicts with the ContentProvider of an existing app; uninstall the conflicting app.",
+  "安装失败：系统内部错误（常见于存储空间不足或开机未完成），请重启运行时后重试。": "Installation failed: internal system error (often low storage or boot not finished); restart the runtime and try again.",
+  "安装失败，未获得明确原因": "Installation failed, and no clear reason was returned",
+  "安装失败：安装失败，未获得明确原因": 'Installation failed: no clear reason was returned',
 };
 
 const UI_PHRASES = [
@@ -1207,6 +1226,13 @@ const UI_TRANSLATION_PHRASES = [
   ...Object.entries(UI_TEXT).filter(([source]) => source.length >= 8),
 ].sort((a, b) => b[0].length - a[0].length);
 
+// 泰语：泰语短语优先，没有泰语的条目回退到英文短语
+const UI_TRANSLATION_PHRASES_TH = (() => {
+  const merged = new Map(UI_TRANSLATION_PHRASES);
+  i18n.phrases('th').forEach(([from, to]) => merged.set(from, to));
+  return [...merged].sort((a, b) => b[0].length - a[0].length);
+})();
+
 const BUILTIN_DRIVER_EN = {
   'example-amd-igpu-swangle': {
     name: 'AMD integrated GPU · Use swangle rendering (example)',
@@ -1228,10 +1254,79 @@ const BUILTIN_DRIVER_EN = {
   },
 };
 
+const BUILTIN_DRIVER_TH = {
+  'example-amd-igpu-swangle': {
+    name: 'การ์ดจอออนบอร์ด AMD · เปลี่ยนไปใช้การเรนเดอร์ swangle (ตัวอย่าง)',
+    description: 'บนการ์ดจอออนบอร์ด AMD บางรุ่นที่ใช้ไดรเวอร์เก่า -gpu host ผ่านการตรวจสอบตัวเองของ emulator แต่โปรเซสจะแครชทันทีหลัง guest เริ่มทำงานได้สิบกว่าวินาที (ในบันทึกมีแค่ AEHD is operational) การตรึงตัวเรนเดอร์เป็น swangle ช่วยเลี่ยงปัญหานี้ได้ แลกกับเฟรมเรตที่ต่ำลงเล็กน้อย',
+    notes: [
+      'หากภาพแสดงปกติแต่เกมกระตุก ให้ลด "คุณภาพภาพ" เป็น 540×960 ในการตั้งค่า',
+      'เมื่อยืนยันว่าใช้ได้แล้ว ให้เปลี่ยน enabled เป็น true หรือลบบรรทัดนี้ ไดรเวอร์จะมีผลอัตโนมัติ',
+    ],
+  },
+  'example-intel-igpu-software': {
+    name: 'การ์ดจอออนบอร์ด Intel · สำรองด้วยการเรนเดอร์ด้วยซอฟต์แวร์ (ตัวอย่าง)',
+    description: 'การ์ดจอออนบอร์ด Intel รุ่นเก่า (ก่อน HD / UHD 6xx) อาจเริ่มต้น GLES ไม่สำเร็จหรือภาพแตกในไดรเวอร์บางเวอร์ชัน การตรึงตัวเรนเดอร์เป็น software จะทำให้ภาพขึ้นแน่นอน',
+    notes: ['ภาพควรแสดงได้ แต่เกมอาจกระตุก ฮาร์ดแวร์แบบนี้เหมาะกับแอปเบามากกว่า'],
+  },
+  'example-no-hypervisor-tcg': {
+    name: 'ไม่มีการเร่งความเร็วด้วยฮาร์ดแวร์ · ใช้การจำลองด้วยซอฟต์แวร์โดยตรง (ตัวอย่าง)',
+    description: 'เมื่อเครื่องไม่ได้เปิด Virtual Machine Platform และติดตั้งไดรเวอร์เคอร์เนลไม่ได้ การเร่งความเร็วด้วยฮาร์ดแวร์ของ emulator จะล้มเหลวทันที แพตช์นี้ทำให้ ApkStart ใช้การจำลองด้วยซอฟต์แวร์ (-accel off) ตั้งแต่ต้น ประหยัดการลองซ้ำที่เสียเปล่าสองรอบ พร้อมสลับตัวเรนเดอร์เป็น software เพื่อเลี่ยงการเริ่มต้น GL ล้มเหลว',
+    notes: ['การจำลองด้วยซอฟต์แวร์ช้ากว่าการเร่งความเร็วด้วยฮาร์ดแวร์ 5–10 เท่า หากเปิด virtualization ได้ แนะนำให้เปิด Virtual Machine Platform ใน "Windows Features"'],
+  },
+};
+
 let uiLanguage = 'en';
 const translatedText = new WeakMap();
 let latestUsage = null;
 let usageLoaded = false;
+
+function thaiDynamicText(key) {
+  const t = (text) => i18n.translate(text, 'th') || UI_TEXT[text] || text;
+  const pk = (x) => (x === '应用' ? 'แอป' : x);
+  const rules = [
+    [/^(.+)（(INSTALL_[A-Z_]+)）$/, (_m, body, code) => `${localizedText(body)} (${code})`],
+    [/^安装失败：([^\u3400-\u9fff]+)$/, (_m, raw) => `ติดตั้งไม่สำเร็จ: ${raw}`],
+    [/^(\S+) 检测到模拟器 \/ 转译环境后主动退出（反模拟、反调试或安全校验），属于应用自身限制，不是故障；ApkStart 无法绕过，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} ตรวจพบอีมูเลเตอร์ / สภาพแวดล้อมการแปลแล้วออกจากการทำงานเอง (การตรวจจับอีมูเลเตอร์ การป้องกันการดีบัก หรือการตรวจสอบความปลอดภัย) นี่เป็นข้อจำกัดของแอปเอง ไม่ใช่ความผิดปกติ ApkStart ข้ามไม่ได้ ดูหัวข้อ 6.3 ในคู่มือในตัว`],
+    [/^(\S+) 启动后崩溃：应用与 ARM 翻译层不兼容（常见于反调试 \/ 反模拟检测或 native hook 冲突）。若运行时尚未启用兼容镜像会自动切换重试一次；已启用仍崩溃则属于应用兼容性限制，不是故障，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} แครชหลังเปิด: แอปเข้ากันไม่ได้กับเลเยอร์แปล ARM (พบบ่อยกับการตรวจจับการดีบัก/อีมูเลเตอร์ หรือ native hook ชนกัน) ถ้ายังไม่ได้เปิดอิมเมจความเข้ากันได้ ระบบจะสลับและลองใหม่หนึ่งครั้ง ถ้าเปิดแล้วยังแครช ถือเป็นข้อจำกัดความเข้ากันได้ของแอป ไม่ใช่ความผิดปกติ ดูหัวข้อ 6.3 ในคู่มือในตัว`],
+    [/^(\S+) 启动后崩溃：缺少设备原生库（应用可能只提供 ARM 版本）。若运行时尚未启用 ARM 翻译层会自动切换兼容镜像重试；已启用仍崩溃多为应用限制，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} แครชหลังเปิด: ขาดไลบรารีเนทีฟบนอุปกรณ์ (แอปอาจมีเฉพาะรุ่น ARM) ถ้ายังไม่ได้เปิดเลเยอร์แปล ARM ระบบจะสลับไปอิมเมจความเข้ากันได้แล้วลองใหม่ ถ้ายังแครชส่วนมากเป็นข้อจำกัดของแอป ดูหัวข้อ 6.3 ในคู่มือในตัว`],
+    [/^(\S+) 启动即崩溃（应用内部异常，可能与模拟器环境或缺少 Google 服务有关）。$/, (_m, p) => `${pk(p)} แครชทันทีที่เปิด (ข้อผิดพลาดภายในแอป อาจเกี่ยวกับสภาพแวดล้อมอีมูเลเตอร์หรือขาดบริการ Google)`],
+    [/^(\S+) 启动失败：系统拒绝了启动请求（权限或签名问题）。$/, (_m, p) => `${pk(p)} เริ่มไม่สำเร็จ: ระบบปฏิเสธคำขอเปิด (ปัญหาสิทธิ์หรือลายเซ็น)`],
+    [/^(\S+) 未能启动（进程未存活）$/, (_m, p) => `${pk(p)} เริ่มไม่ได้ (โปรเซสไม่คงอยู่)`],
+    [/^找到 (\d+) 项残留，约 (\d+) MB：$/, (_m, n, mb) => `พบส่วนที่ตกค้าง ${n} รายการ ประมาณ ${mb} MB:`],
+    [/^…另有 (\d+) 项$/, (_m, n) => `…และอีก ${n} รายการ`],
+    [/^有 (\d+) 个残留的模拟器进程$/, (_m, n) => `มีโปรเซสอีมูเลเตอร์ที่ตกค้าง ${n} รายการ`],
+    [/^Android (\S+) 已就绪 · 应用窗口会按屏幕自动适配$/, (_m, v) => `Android ${v} พร้อมแล้ว · หน้าต่างแอปจะปรับตามหน้าจออัตโนมัติ`],
+    [/^Android (\S+) · Wi-Fi 已(开|关)( · 飞行模式)? · 音量 (\d+)%$/, (_m, v, w, a, vol) => `Android ${v} · Wi-Fi${w === '开' ? 'เปิดอยู่' : 'ปิดอยู่'}${a ? ' · โหมดเครื่องบิน' : ''} · ระดับเสียง ${vol}%`],
+    [/^已是最新版本（(v[\d.]+)）(?: · 经由 (.+?))?(（离线缓存）)?$/, (_m, v, src, stale) => `เป็นเวอร์ชันล่าสุดแล้ว (${v})${src ? ` · ผ่าน ${src}` : ''}${stale ? ' (แคชออฟไลน์)' : ''}`],
+    [/^（已生效：(.+)）$/, (_m, x) => `(มีผลแล้ว: ${t(x)})`],
+    [/^本机 (.+?) 内存 \/ (\d+) 核；内存最多可分 (.+?)，核心最多 (\d+) 个（各留 1\/4 内存与 1 核给 Windows）。数据分区上限 (\d+) GB(?:（所在磁盘剩余 (.+?) GB）)?。(.*)$/,
+      (_m, mem, cores, maxMem, maxCores, maxGB, free, rest) => `เครื่องนี้: หน่วยความจำ ${mem} / ${cores} คอร์ แบ่งหน่วยความจำได้สูงสุด ${maxMem} และคอร์สูงสุด ${maxCores} คอร์ (เหลือ 1/4 ของหน่วยความจำและ 1 คอร์ไว้ให้ Windows) ขีดจำกัดพาร์ติชันข้อมูล ${maxGB} GB${free ? ` (พื้นที่ดิสก์ว่าง ${free} GB)` : ''}${rest ? ' ' + localizedText(rest) : ''}`],
+    [/^下载运行时（约 (.+?)，只需一次，(\d+) 线程）…$/, (_m, size, n) => `กำลังดาวน์โหลดรันไทม์ (ประมาณ ${size} ครั้งเดียว ${n} เธรด)…`],
+    [/^下载运行时引擎（约 (.+?)，走 Google 官方源）…$/, (_m, size) => `กำลังดาวน์โหลดเอนจินรันไทม์ (ประมาณ ${size} จากแหล่งทางการของ Google)…`],
+    [/^下载 Android platform-tools（约 (.+?)）…$/, (_m, size) => `กำลังดาวน์โหลด Android platform-tools (ประมาณ ${size})…`],
+    [/^正在从 (.+?) 下载运行时…$/, (_m, name) => `กำลังดาวน์โหลดรันไทม์จาก ${name}…`],
+    [/^正在挑选最快的下载源（(.+?) · (.+?)）…$/, (_m, name, tag) => `กำลังเลือกแหล่งดาวน์โหลดที่เร็วที่สุด (${name} · ${tag})…`],
+    [/^下载 adb… (.+)$/, (_m, p) => `กำลังดาวน์โหลด ADB… ${p}`],
+    [/^下载运行时引擎 (.+)$/, (_m, p) => `กำลังดาวน์โหลดเอนจินรันไทม์ ${p}`],
+    [/^下载兼容镜像 (.+)$/, (_m, p) => `กำลังดาวน์โหลดอิมเมจความเข้ากันได้ ${p}`],
+    [/^解压运行时（约 (.+?)）…$/, (_m, d) => `กำลังแตกไฟล์รันไทม์ (ประมาณ ${d})…`],
+    [/^解压 (\d+)\/(\d+)$/, (_m, done, total) => `กำลังแตกไฟล์ ${done}/${total}`],
+    [/^正在准备 adb…$/, () => 'กำลังเตรียม ADB…'],
+    [/^正在准备 Android 运行时…$/, () => 'กำลังเตรียมรันไทม์ Android…'],
+    [/^正在准备 Android 系统镜像…$/, () => 'กำลังเตรียมอิมเมจระบบ Android…'],
+    [/^运行时未就绪（(.+)）$/, (_m, why) => `${t('运行时未就绪')} (${t(why)})`],
+    [/^自动：([\d.]+)GB 内存 · (\d+) 核 · (.+?) 渲染 · (硬件加速|软件模拟) · (按需快照|冷启动)( · 轻量容器)? · 端口 (\d+)$/,
+      (_m, mem, cores, renderer, accel, snap, light, port) => `อัตโนมัติ: หน่วยความจำ ${mem} GB · ${cores} คอร์ CPU · เรนเดอร์ ${renderer} · ${accel === '硬件加速' ? 'เร่งความเร็วด้วยฮาร์ดแวร์' : 'จำลองด้วยซอฟต์แวร์'} · ${snap === '按需快照' ? 'สแนปช็อตตามต้องการ' : 'บูตเย็น'}${light ? ' · คอนเทนเนอร์น้ำหนักเบา' : ''} · พอร์ต ${port}`],
+  ];
+  for (const [pattern, render] of rules) {
+    const match = key.match(pattern);
+    if (match) return render(...match);
+  }
+  if (/^下载运行时 /.test(key)) {
+    return key.replace(/^下载运行时 /, 'กำลังดาวน์โหลดรันไทม์ ').replace(' · 剩余约 ', ' · เหลือประมาณ ').replace(/ 分钟/g, ' นาที');
+  }
+  return null;
+}
 
 function localizedText(source) {
   const key = source.trim().replace(/\s+/g, ' ');
@@ -1240,6 +1335,10 @@ function localizedText(source) {
   const leading = source.match(/^\s*/)[0];
   const trailing = source.match(/\s*$/)[0];
   if (localeTranslation) return `${leading}${localeTranslation}${trailing}`;
+  if (uiLanguage === 'th') {
+    const thai = thaiDynamicText(key);
+    if (thai) return `${leading}${thai}${trailing}`;
+  }
   const translated = UI_TEXT[key];
   if (translated) return `${leading}${translated}${trailing}`;
   const issueCount = key.match(/^(\d+) 个(严重|提示)$/);
@@ -1259,7 +1358,16 @@ function localizedText(source) {
     return `${leading}${title} (${detail})${trailing}`;
   }
   const tr = (t) => UI_TEXT[t] || t;
+  const pk = (x) => (x === '应用' ? 'The app' : x);
   const dynamicPatterns = [
+    [/^(.+)（(INSTALL_[A-Z_]+)）$/, (_m, body, code) => `${localizedText(body)} (${code})`],
+    [/^安装失败：([^\u3400-\u9fff]+)$/, (_m, raw) => `Installation failed: ${raw}`],
+    [/^(\S+) 检测到模拟器 \/ 转译环境后主动退出（反模拟、反调试或安全校验），属于应用自身限制，不是故障；ApkStart 无法绕过，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} detected the emulator / translation environment and exited on its own (anti-emulator, anti-debug or security checks). This is a limit of the app itself, not a fault; ApkStart cannot bypass it. See section 6.3 of the built-in guide.`],
+    [/^(\S+) 启动后崩溃：应用与 ARM 翻译层不兼容（常见于反调试 \/ 反模拟检测或 native hook 冲突）。若运行时尚未启用兼容镜像会自动切换重试一次；已启用仍崩溃则属于应用兼容性限制，不是故障，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} crashed after launch: the app is not compatible with the ARM translation layer (common with anti-debug / anti-emulator checks or native hook conflicts). If the compatibility image is not enabled yet, ApkStart switches and retries once; if it still crashes with the image enabled, it is an app compatibility limit, not a fault. See section 6.3 of the built-in guide.`],
+    [/^(\S+) 启动后崩溃：缺少设备原生库（应用可能只提供 ARM 版本）。若运行时尚未启用 ARM 翻译层会自动切换兼容镜像重试；已启用仍崩溃多为应用限制，详见内置手册 6\.3。$/, (_m, p) => `${pk(p)} crashed after launch: a native library is missing on the device (the app may only provide an ARM build). If the ARM translation layer is not enabled yet, ApkStart switches to the compatibility image and retries; if it still crashes, it is usually an app limit. See section 6.3 of the built-in guide.`],
+    [/^(\S+) 启动即崩溃（应用内部异常，可能与模拟器环境或缺少 Google 服务有关）。$/, (_m, p) => `${pk(p)} crashed right at launch (an internal app exception, possibly related to the emulator environment or missing Google services).`],
+    [/^(\S+) 启动失败：系统拒绝了启动请求（权限或签名问题）。$/, (_m, p) => `${pk(p)} failed to start: the system rejected the launch request (a permission or signature problem).`],
+    [/^(\S+) 未能启动（进程未存活）$/, (_m, p) => `${pk(p)} could not be started (the process did not stay alive)`],
     [/^找到 (\d+) 项残留，约 (\d+) MB：$/, (_m, n, mb) => `Found ${n} leftover ${n === '1' ? 'item' : 'items'}, about ${mb} MB:`],
     [/^…另有 (\d+) 项$/, (_m, n) => `…and ${n} more`],
     [/^有 (\d+) 个残留的模拟器进程$/, (_m, n) => `${n} leftover emulator ${n === '1' ? 'process' : 'processes'}`],
@@ -1302,7 +1410,7 @@ function localizedText(source) {
   if (profile) {
     return `${leading}Automatic: ${profile[1]} GB memory · ${profile[2]} CPU cores · ${profile[3]} rendering · ${profile[4] === '硬件加速' ? 'hardware acceleration' : 'software emulation'} · ${profile[5] === '按需快照' ? 'on-demand snapshots' : 'cold boot'}${profile[6] ? ' · lightweight container' : ''} · port ${profile[7]}${trailing}`;
   }
-  const phraseOutput = UI_TRANSLATION_PHRASES.reduce(
+  const phraseOutput = (uiLanguage === 'th' ? UI_TRANSLATION_PHRASES_TH : UI_TRANSLATION_PHRASES).reduce(
     (text, [from, to]) => text.replaceAll(from, to),
     key,
   );
@@ -2382,7 +2490,12 @@ function renderDrivers(r) {
   const errors = (r && r.errors) || [];
   const onCount = drivers.filter((d) => d.enabled && d.matched).length;
   if (sum) {
-    if (uiLanguage !== 'zh-CN') {
+    if (uiLanguage === 'th') {
+      const accel = host.accel === 'none' ? 'ไม่มีการเร่งความเร็วด้วยฮาร์ดแวร์' : (host.accel || 'ไม่ทราบ');
+      sum.textContent = `เครื่องนี้: ${host.platform || 'ไม่ทราบ'}/${host.arch || 'ไม่ทราบ'} · การ์ดจอ ${host.gpuVendor || 'ไม่ทราบ'} · ${accel}`
+        + ` · emulator ${host.emulatorVersion || 'ไม่ทราบ'}; ไดรเวอร์ ${drivers.length} รายการ ใช้งานจริงบนเครื่องนี้ ${onCount} รายการ`
+        + (errors.length ? ` โหลดไฟล์ไม่สำเร็จ ${errors.length} ไฟล์ (ดูด้านล่าง)` : '');
+    } else if (uiLanguage !== 'zh-CN') {
       const accel = host.accel === 'none' ? 'No hardware acceleration' : (host.accel || 'Unknown');
       sum.textContent = `This PC: ${host.platform || 'Unknown'}/${host.arch || 'Unknown'} · ${host.gpuVendor || 'Unknown'} GPU · ${accel}`
         + ` · emulator ${host.emulatorVersion || 'unknown'}; ${drivers.length} drivers, ${onCount} active on this PC.`
@@ -2396,7 +2509,7 @@ function renderDrivers(r) {
   }
   list.textContent = '';
   for (const d of drivers) {
-    const builtinEnglish = d.builtin && BUILTIN_DRIVER_EN[d.id];
+    const builtinEnglish = d.builtin && ((uiLanguage === 'th' && BUILTIN_DRIVER_TH[d.id]) || BUILTIN_DRIVER_EN[d.id]);
     const item = document.createElement('div');
     item.className = d.enabled ? 'drv-item on' : 'drv-item';
 
@@ -2435,8 +2548,8 @@ function renderDrivers(r) {
       + (d.author ? ` · ${d.author}` : '')
       + ` · priority ${d.priority}`
       + (d.hits && d.hits.length
-        ? ` · ${uiLanguage !== 'zh-CN' ? 'Matched: ' : '命中：'}${d.hits.join(' / ')}`
-        : ` · ${uiLanguage !== 'zh-CN' ? 'Does not match this PC' : '本机不匹配'}`);
+        ? ` · ${uiLanguage === 'th' ? 'ตรงกับ: ' : uiLanguage !== 'zh-CN' ? 'Matched: ' : '命中：'}${d.hits.join(' / ')}`
+        : ` · ${uiLanguage === 'th' ? 'ไม่ตรงกับเครื่องนี้' : uiLanguage !== 'zh-CN' ? 'Does not match this PC' : '本机不匹配'}`);
     item.append(meta);
 
     if (d.description) {
