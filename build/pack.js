@@ -46,25 +46,25 @@ function copy(src, dest) {
   }
 }
 
-console.log(FULL ? '打包完整版（含运行时）→' : '打包便携版 →', OUT);
+console.log(FULL ? 'Packing the full edition (runtime included) ->' : 'Packing the portable edition ->', OUT);
 // 目标已存在时不做整树删除：部分环境会拦截批量删除，且打包中途失败会丢掉
 // 上一个可用版本。改为先把旧目录改名保留，再全新构建；占用中则自动换目录。
 if (fs.existsSync(OUT)) {
   try {
     const backup = `${OUT}.prev-${new Date().toISOString().replace(/[:.]/g, '-')}`;
     fs.renameSync(OUT, backup);
-    console.log('旧版本已保留 →', backup);
+    console.log('Previous build kept at ->', backup);
   } catch (_) {
     // 某些环境（杀软 / 搜索索引 / 资源管理器）会长时间持有目录句柄，
     // 整目录改名必然 EBUSY；这时退到带版本号的目录，产物一样可用且不再重名。
     OUT = path.join(ROOT, 'dist', `ApkStart-v${require(path.join(ROOT, 'package.json')).version}-win64-portable`);
-    console.log('旧目录被占用，改输出到 →', OUT);
+    console.log('The old folder is in use (is ApkStart running?), writing to ->', OUT);
   }
 }
 fs.mkdirSync(path.join(OUT, 'resources', 'app'), { recursive: true });
 
 // 1. Electron 运行时
-console.log('复制 Electron 运行时…');
+console.log('Copying the Electron runtime...');
 copy(ELECTRON_DIST, OUT);
 fs.rmSync(path.join(OUT, 'resources', 'default_app.asar'), { force: true });
 
@@ -104,7 +104,7 @@ for (const rel of ['d3dcompiler_47.dll']) {
 // 2. 应用本体
 // assets/ 里是随包分发的资源：PinyinIME.apk（中文输入法），开机时由
 // Runtime.prepare() 静默装进安卓。漏掉它用户就打不了中文。
-console.log('复制应用…');
+console.log('Copying the app...');
 const appDir = path.join(OUT, 'resources', 'app');
 for (const item of ['package.json', 'src', 'assets', 'LICENSE']) {
   const src = path.join(ROOT, item);
@@ -120,7 +120,7 @@ for (const item of ['package.json', 'src', 'assets', 'LICENSE']) {
 // 通常作为 optionalDependency 挂在同 scope 下（如 @napi-rs/lzma-win32-x64-msvc）。
 const prodDeps = Object.keys((require(path.join(ROOT, 'package.json')).dependencies) || {});
 if (prodDeps.length) {
-  console.log(`复制生产依赖（${prodDeps.length}）：${prodDeps.join(', ')}`);
+  console.log(`Copying production dependencies (${prodDeps.length}): ${prodDeps.join(', ')}`);
   const destModules = path.join(appDir, 'node_modules');
   for (const dep of prodDeps) {
     if (dep.startsWith('@')) {
@@ -155,11 +155,11 @@ if (FULL) {
   const runtime = path.join(ROOT, 'build', 'runtime');
   const runtimeExe = path.join(runtime, 'emulator', 'emulator.exe');
   if (!fs.existsSync(runtimeExe)) {
-    console.error('\n[!] 找不到 build/runtime/emulator/emulator.exe。');
-    console.error('    先跑 node build/prepare-runtime.js（npm run runtime）生成运行时，再打完整版。\n');
+    console.error('\n[!] build/runtime/emulator/emulator.exe was not found.');
+    console.error('    Run node build/prepare-runtime.js (npm run runtime) to create the runtime first, then build the full edition.\n');
     process.exit(1);
   }
-  console.log('内置运行时（约 1 GB，需要一会儿）…');
+  console.log('Copying the bundled runtime (about 1 GB, this takes a while)...');
   // 运行时目录里可能残留开发期的垃圾：userdata.img.broken（上次展开失败留下的）、
   // *.part（解压中断）、*.new（正在重压的临时文件）。这些既占体积又没有任何用，
   // 甚至会把一份坏镜像带进发行包 —— 直接跳过，不要复制。
@@ -182,8 +182,8 @@ if (FULL) {
         fs.readSync(fd, tail, 0, n, size - n);
       } finally { fs.closeSync(fd); }
       if (!tail.includes(Buffer.from('YZ'))) {
-        console.error(`\n[!] 镜像不完整（缺 xz footer，多半是下载被截断）：${p}`);
-        console.error(`    大小 ${(size / 1048576).toFixed(1)} MB。请重新获取该镜像后再打包。\n`);
+        console.error(`\n[!] The image is incomplete (xz footer missing, most likely a truncated download): ${p}`);
+        console.error(`    Size ${(size / 1048576).toFixed(1)} MB. Get the image again, then pack.\n`);
         process.exit(1);
       }
     }
@@ -233,12 +233,12 @@ function embedExeMeta(exe) {
     path.join(ROOT, 'node_modules', 'rcedit', 'bin', 'rcedit-x64.exe'),
   ].find((p) => fs.existsSync(p));
   if (!rcedit) {
-    console.warn('  [!] 找不到 rcedit.exe，exe 图标/版本信息保持 Electron 默认值');
+    console.warn('  [!] rcedit.exe was not found; the exe keeps the default Electron icon and version info');
     return false;
   }
   const ico = path.join(ROOT, 'src', 'ui', 'assets', 'appicon.ico');
   if (!fs.existsSync(ico)) {
-    console.warn(`  [!] 找不到 ${ico}，跳过图标写入`);
+    console.warn(`  [!] ${ico} was not found; skipping the icon`);
     return false;
   }
   const args = [
@@ -249,7 +249,7 @@ function embedExeMeta(exe) {
     '--set-file-version', fileVersion(PKG.version),
     '--set-product-version', PKG.version,
     '--set-version-string', 'ProductName', 'ApkStart',
-    '--set-version-string', 'FileDescription', 'ApkStart 安卓应用运行器',
+    '--set-version-string', 'FileDescription', 'ApkStart Android app player',
     '--set-version-string', 'CompanyName', PKG.author || 'RoutineMiku',
     '--set-version-string', 'LegalCopyright', 'Copyright (c) 2026 ApkStart',
     '--set-version-string', 'OriginalFilename', 'ApkStart.exe',
@@ -257,10 +257,10 @@ function embedExeMeta(exe) {
   ];
   try {
     execFileSync(rcedit, args, { stdio: 'pipe', windowsHide: true });
-    console.log(`  exe 图标/版本已写入（${PKG.version}，FileDescription=ApkStart 安卓应用运行器）`);
+    console.log(`  exe icon and version info written (${PKG.version}, FileDescription=ApkStart Android app player)`);
     return true;
   } catch (e) {
-    console.warn(`  [!] rcedit 失败：${e.message}`);
+    console.warn(`  [!] rcedit failed: ${e.message}`);
     return false;
   }
 }
@@ -288,6 +288,6 @@ console.log(
   `完成。整包 ${totalMB.toFixed(0)} MB（语言包省了 ${(localeSaved / 1048576).toFixed(0)} MB，`
   + `冗余运行库省了 ${(pruneSaved / 1048576).toFixed(1)} MB）。`,
 );
-console.log('压缩：node build/zip.js ' + path.relative(ROOT, OUT) + ' <输出.zip>');
-console.log(`运行 ${path.join(OUT, 'ApkStart.exe')} 即可使用。`);
-if (!FULL) console.log('想要「一次下载、装完不联网」的完整版：node build/pack.js --full');
+console.log('To zip it: node build/zip.js ' + path.relative(ROOT, OUT) + ' <output.zip>');
+console.log(`Run ${path.join(OUT, 'ApkStart.exe')} to use it.`);
+if (!FULL) console.log('Want a single download that needs no internet after installing? node build/pack.js --full');

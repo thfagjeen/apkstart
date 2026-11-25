@@ -138,6 +138,7 @@ body {
   cursor: pointer;
   transition: background .15s, border-color .15s, transform .06s;
 }
+.btn[hidden] { display: none; }
 .btn:hover { background: #f4f6f8; }
 .btn:active { transform: translateY(.5px); }
 .btn.primary {

@@ -344,6 +344,23 @@ app.whenReady().then(async () => {
   step('确认框 / 兼容性提示 / 应用计数翻成英文与泰语，无中文残留',
     leftover.length === 0 && dialogOut.en[6] === '2 apps' && dialogOut.en[7] === '1 app' && dialogOut.th[6] === '2 แอป',
     leftover.length ? leftover.join(' / ') : `${dialogOut.en[0]} | ${dialogOut.th[0]}`);
+  // 拼出来的列表里的「、」等全角标点，在英文 / 泰语界面里要换成西文标点；相对时间单复数；按钮的 hidden 要真的隐藏
+  const polish = await evalJs(`(() => {
+    const before = uiLanguage;
+    const out = { punct: {}, rel: '', btnHidden: '' };
+    const sample = '还差 adb 工具链、Android 运行时、系统镜像；点下面「一键完成」，会在后台一次装好并自动开机';
+    for (const lang of ['en', 'th']) { uiLanguage = lang; out.punct[lang] = localizedText(sample); }
+    uiLanguage = 'en';
+    out.rel = [relTime(Date.now() - 86400000 * 1.2), relTime(Date.now() - 3600000 * 1.2), relTime(Date.now() - 86400000 * 3)].join(' | ');
+    uiLanguage = before;
+    const b = document.getElementById('btnInstallAndroid16');
+    b.hidden = true;
+    out.btnHidden = getComputedStyle(b).display;
+    return out;
+  })()`);
+  step('英文 / 泰语界面没有全角标点，相对时间 1 day / 3 days，hidden 按钮不显示',
+    !/[、，；：。（）]/.test(polish.punct.en + polish.punct.th) && polish.rel === '1 day ago | 1 hour ago | 3 days ago' && polish.btnHidden === 'none',
+    `${polish.punct.en} | ${polish.rel} | display=${polish.btnHidden}`);
   // 安装失败的原因由 core/adb.js 生成中文，渲染层要能翻成英文 / 泰语（带「（INSTALL_*）」尾巴）
   const adbMod = require(path.join(__dirname, '..', 'src', 'core', 'adb.js'));
   const installMessages = ['OLDER_SDK', 'NO_MATCHING_ABIS', 'VERSION_DOWNGRADE'].map((c) => adbMod.friendlyInstallError(`Failure [INSTALL_FAILED_${c}]`));

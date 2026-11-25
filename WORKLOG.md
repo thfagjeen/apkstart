@@ -42,6 +42,7 @@ fork ของ [`RoutineMiku/apkstart`](https://github.com/RoutineMiku/apkstart)
 - [ ] commit และ push งานภาษาไทย, `README.th.md`, `build-exe.bat`, `CHANGELOG.md`, `WORKLOG.md` ขึ้น fork
 - [ ] เปิดแอปเลือกภาษาไทยแล้วดูด้วยตาทุกหน้า (ตรวจแค่ผ่านสคริปต์) โดยเฉพาะข้อความที่โผล่ตอนใช้งานจริง
 - [ ] ให้เจ้าของภาษาไทยตรวจคำแปล (แปลโดย AI) ศัพท์ที่อาจอยากปรับ: รันไทม์, อิมเมจ, สแนปช็อต, เครื่องเสมือน
+- [x] README หน้าแรกเป็นอังกฤษ + รูปใหม่ (สร้างด้วยการเรนเดอร์ UI จริงใน Electron ด้วยข้อมูลจำลองของเทสต์หน้าตั้งค่า: ตัดหัวไฟล์ test/settings-ui-test.js ถึงบรรทัด const evalJs, ตั้ง language:en แล้วต่อโค้ดสลับ mock IPC ของ apps:list ซึ่งต้องคืนอาร์เรย์ และ runtime:status แล้ว capturePage)
 - [ ] ข้อความอื่นใน `main.js` / `src/core/*.js` นอกเหนือจากที่แปลไปแล้ว (เมนูถาดระบบ กล่องอัปเดต/ยืนยัน การแจ้งเตือน) ยังไม่ได้ไล่ตรวจเมื่อเลือกไทย
 - [x] แก้เตือนผิด minSdk (เดิมเทียบกับ 34 ตายตัว) และเปลี่ยน window.confirm เป็น askConfirm ที่แปลได้ (ผู้ใช้เจอจากภาพหน้าจอหลังสลับเป็น Android 16)
 - [ ] Android 16: ยังไม่ได้ทดสอบแอป ARM-only จริงบนอิมเมจ API 36 (มี `arm64-v8a` ใน abilist แต่ยังไม่ได้ลองรันแอป) และยังไม่ได้ลองสลับ 14 ↔ 16 ผ่านปุ่มในหน้าตั้งค่าด้วยมือ (ทดสอบผ่านสคริปต์ + เทสต์อัตโนมัติ)
@@ -57,7 +58,7 @@ fork ของ [`RoutineMiku/apkstart`](https://github.com/RoutineMiku/apkstart)
 
 ## ข้อห้าม / ข้อควรระวัง
 
-- **อย่าแก้ `README.md` ต้นฉบับ**: ใช้ `README.th.md` แยก เพื่อไม่ชนตอน `git merge upstream/main`
+- **README**: `README.md` = ฉบับอังกฤษของ fork (หน้าแรกบน GitHub), `README.zh-CN.md` = README ภาษาจีนของต้นฉบับ, `README.th.md` = ภาษาไทย เมื่อ `git merge upstream/main` แล้ว README.md ของต้นฉบับ (จีน) จะชน/เข้ามาทับ: ให้เอาเนื้อหาใหม่ของต้นฉบับไปใส่ใน `README.zh-CN.md` แล้วคง `README.md` เป็นภาษาอังกฤษ และอัปเดตส่วนที่เกี่ยวข้องในฉบับอังกฤษ/ไทยด้วย
 - **อย่า commit** `dist/`, `node_modules/`, `test/out/`, ไฟล์ชั่วคราว (`.gitignore` กันไว้แล้ว ตรวจ `git status` ก่อน commit ทุกครั้ง)
 - **อย่าลบข้อความลิขสิทธิ์และ `LICENSE`** (เงื่อนไขของ MIT)
 - **อย่าเปิดแอปแบบ packaged** (`dist\...\ApkStart.exe`) เล่นๆ: จะเขียนรายการเปิดพร้อม Windows ลงรีจิสทรี (`applyAutoStart` ทำงานเฉพาะตอน `app.isPackaged`) ทดสอบด้วย `npm start` แทน
@@ -173,7 +174,7 @@ fork ของ [`RoutineMiku/apkstart`](https://github.com/RoutineMiku/apkstart)
 
 ## ข้อห้าม / ข้อควรระวัง
 
-- **อย่าแก้ `README.md` ต้นฉบับ**: ใช้ `README.th.md` แยก เพื่อไม่ชนตอน `git merge upstream/main`
+- **README**: `README.md` = ฉบับอังกฤษของ fork (หน้าแรกบน GitHub), `README.zh-CN.md` = README ภาษาจีนของต้นฉบับ, `README.th.md` = ภาษาไทย เมื่อ `git merge upstream/main` แล้ว README.md ของต้นฉบับ (จีน) จะชน/เข้ามาทับ: ให้เอาเนื้อหาใหม่ของต้นฉบับไปใส่ใน `README.zh-CN.md` แล้วคง `README.md` เป็นภาษาอังกฤษ และอัปเดตส่วนที่เกี่ยวข้องในฉบับอังกฤษ/ไทยด้วย
 - **อย่า commit** `dist/`, `node_modules/`, `test/out/`, ไฟล์ชั่วคราว (`.gitignore` กันไว้แล้ว ตรวจ `git status` ก่อน commit ทุกครั้ง)
 - **อย่าลบข้อความลิขสิทธิ์และ `LICENSE`** (เงื่อนไขของ MIT)
 - **อย่าเปิดแอปแบบ packaged** (`dist\...\ApkStart.exe`) เล่นๆ: จะเขียนรายการเปิดพร้อม Windows ลงรีจิสทรี (`applyAutoStart` ทำงานเฉพาะตอน `app.isPackaged`) ทดสอบด้วย `npm start` แทน

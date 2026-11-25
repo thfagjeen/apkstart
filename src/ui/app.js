@@ -1356,7 +1356,31 @@ function thaiDynamicText(key) {
   return null;
 }
 
+/** 非中文界面：译文里残留的全角标点（拼接列表用的「、」等）换成西文标点，只处理已经译完（不含汉字）的文本 */
+function westernizePunctuation(text) {
+  return text
+    .replace(/、/g, ', ')
+    .replace(/，/g, ', ')
+    .replace(/；/g, '; ')
+    .replace(/：/g, ': ')
+    .replace(/。/g, '. ')
+    .replace(/（/g, ' (')
+    .replace(/）/g, ') ')
+    .replace(/ {2,}/g, ' ')
+    .replace(/ ([,.;:)])/g, '$1')
+    .replace(/\( /g, '(');
+}
+
 function localizedText(source) {
+  const out = localizedTextCore(source);
+  if (uiLanguage === 'zh-CN' || out === source || /[\u3400-\u9fff]/.test(out)) return out;
+  if (!/[、，；：。（）]/.test(out)) return out;
+  const lead = out.match(/^\s*/)[0];
+  const trail = out.match(/\s*$/)[0];
+  return lead + westernizePunctuation(out.trim()) + trail;
+}
+
+function localizedTextCore(source) {
   const key = source.trim().replace(/\s+/g, ' ');
   if (!key || uiLanguage === 'zh-CN') return source;
   const localeTranslation = i18n.translate(key, uiLanguage);
@@ -1580,9 +1604,9 @@ function relTime(ts) {
   const d = Date.now() - ts;
   if (uiLanguage === 'en') {
     if (d < 60000) return 'Just now';
-    if (d < 3600000) return `${Math.floor(d / 60000)} minutes ago`;
-    if (d < 86400000) return `${Math.floor(d / 3600000)} hours ago`;
-    if (d < 86400000 * 30) return `${Math.floor(d / 86400000)} days ago`;
+    if (d < 3600000) { const n = Math.floor(d / 60000); return `${n} ${n === 1 ? 'minute' : 'minutes'} ago`; }
+    if (d < 86400000) { const n = Math.floor(d / 3600000); return `${n} ${n === 1 ? 'hour' : 'hours'} ago`; }
+    if (d < 86400000 * 30) { const n = Math.floor(d / 86400000); return `${n} ${n === 1 ? 'day' : 'days'} ago`; }
     return new Date(ts).toLocaleDateString('en-US');
   }
   if (uiLanguage !== 'zh-CN') {

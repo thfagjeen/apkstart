@@ -2590,7 +2590,7 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(/--set-version-string', 'ProductName', 'ApkStart'/.test(packJs), 'ProductName 必须是 ApkStart');
     assert(/embedExeMeta\(exePath\)/.test(packJs), '要在改名之后真的调用');
     // 找不到 rcedit 时要明确告警，不能静默产出「Electron 图标」的包
-    assert(/找不到 rcedit\.exe/.test(packJs), '缺 rcedit 要告警');
+    assert(/rcedit\.exe was not found/.test(packJs), '缺 rcedit 要告警');
 
     // 任务栏身份：不设 AppUserModelID，任务栏固定项/通知会落到 "Electron" 上
     assert(/setAumid\(APP_AUMID\);/.test(mainJs), '启动时要设置 AppUserModelID');
