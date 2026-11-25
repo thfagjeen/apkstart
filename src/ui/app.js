@@ -1023,9 +1023,21 @@ const UI_TEXT = {
   '渲染': 'rendering',
   '端口': 'Port',
   '目标': 'target',
+  // —— 补译 2：运行时状态、诊断、原生确认框 ——
+  '停止运行时': 'Stop runtime',
+  '上次没有正常关机的安卓进程还占着资源与 AVD 锁，会让下次开机失败。可以一键清理（不会动已装应用与存档）。': 'Android processes left over from an unclean shutdown still hold resources and the AVD lock, which can make the next boot fail. You can clean them up in one click (installed apps and saves are not touched).',
+  '后台定时把这台机器查一遍：安卓运行时有没有起来、adb 授权是否正常、磁盘还剩多少、 数据分区是不是被差量盘挡住、快照有没有坏、设置之间有没有互相打架。 只在发现新的严重问题时弹一次通知，其余都安静地列在下面。': 'Periodically checks this PC: whether the Android runtime is up, whether ADB is authorized, how much disk space is left, whether the data partition is blocked by the overlay disk, whether snapshots are healthy, and whether settings conflict with each other. You get a notification only when a new serious issue is found; everything else is listed quietly below.',
+  '只删除「旧版本程序目录 / 已失效的卸载项 / 更新临时文件」，当前正在运行的版本和你的应用数据都不会动。': 'Only removes “old-version program folders / stale uninstall entries / temporary update files”. The version currently running and your app data are not touched.',
+  '取消': 'Cancel',
+  '开始清理': 'Start cleanup',
 };
 
 const UI_PHRASES = [
+  ['旧版本程序目录（含 ', 'Old-version program folder (contains '],
+  ['失效的卸载项', 'Stale uninstall entry'],
+  ['更新下载的临时文件', 'Temporary update download files'],
+  ['旧版遗留的快速启动快照', 'Quick-boot snapshot left by an older version'],
+  ['废弃的快照残留', 'Abandoned snapshot leftovers'],
   [' GB 还没生效：安卓正在用快速启动差量盘，需要「重置安卓数据」后按新容量重建（会清空已装应用）。', ' GB is not in effect yet: Android is using the quick-boot overlay disk; reset Android data to rebuild with the new size (installed apps will be cleared).'],
   ['。 目标 ', '. Target '],
   ['核 · ', ' cores · '],
@@ -1246,6 +1258,22 @@ function localizedText(source) {
     const detail = i18n.translate(runtimeStatus[1], uiLanguage) || UI_TEXT[runtimeStatus[1]] || runtimeStatus[1];
     return `${leading}${title} (${detail})${trailing}`;
   }
+  const tr = (t) => UI_TEXT[t] || t;
+  const dynamicPatterns = [
+    [/^找到 (\d+) 项残留，约 (\d+) MB：$/, (_m, n, mb) => `Found ${n} leftover ${n === '1' ? 'item' : 'items'}, about ${mb} MB:`],
+    [/^…另有 (\d+) 项$/, (_m, n) => `…and ${n} more`],
+    [/^有 (\d+) 个残留的模拟器进程$/, (_m, n) => `${n} leftover emulator ${n === '1' ? 'process' : 'processes'}`],
+    [/^Android (\S+) 已就绪 · 应用窗口会按屏幕自动适配$/, (_m, v) => `Android ${v} ready · App windows adapt to the screen automatically`],
+    [/^Android (\S+) · Wi-Fi 已(开|关)( · 飞行模式)? · 音量 (\d+)%$/, (_m, v, w, a, vol) => `Android ${v} · Wi-Fi ${w === '开' ? 'on' : 'off'}${a ? ' · Airplane mode' : ''} · Volume ${vol}%`],
+    [/^已是最新版本（(v[\d.]+)）(?: · 经由 (.+?))?(（离线缓存）)?$/, (_m, v, src, stale) => `You are up to date (${v})${src ? ` · via ${src}` : ''}${stale ? ' (offline cache)' : ''}`],
+    [/^（已生效：(.+)）$/, (_m, x) => `(Applied: ${tr(x)})`],
+    [/^本机 (.+?) 内存 \/ (\d+) 核；内存最多可分 (.+?)，核心最多 (\d+) 个（各留 1\/4 内存与 1 核给 Windows）。数据分区上限 (\d+) GB(?:（所在磁盘剩余 (.+?) GB）)?。(.*)$/,
+      (_m, mem, cores, maxMem, maxCores, maxGB, free, rest) => `This PC: ${mem} memory / ${cores} cores; up to ${maxMem} of memory and ${maxCores} cores can be assigned (1/4 of memory and 1 core are kept for Windows). Data partition limit: ${maxGB} GB${free ? ` (free disk space: ${free} GB)` : ''}.${rest ? ' ' + localizedText(rest) : ''}`],
+  ];
+  for (const [pattern, render] of dynamicPatterns) {
+    const match = key.match(pattern);
+    if (match) return `${leading}${render(...match)}${trailing}`;
+  }
   const progressPatterns = [
     [/^下载运行时（约 (.+?)，只需一次，(\d+) 线程）…$/, (_m, size, threads) => `Downloading runtime (about ${size}, one-time download, ${threads} threads)…`],
     [/^下载运行时引擎（约 (.+?)，走 Google 官方源）…$/, (_m, size) => `Downloading runtime engine (about ${size}, from Google)…`],
@@ -1332,6 +1360,21 @@ function translateElement(el) {
       if (output !== current) el.setAttribute(attr, output);
     }
   }
+}
+
+// 原生确认框由主进程弹出，文字不经过 DOM，需要在发送前先翻译（逐行，避免整段含中文时整体放弃）
+function confirmLocalized(opts = {}) {
+  const t = (v) => (typeof v === 'string'
+    ? v.split('\n').map((line) => (line.trim() ? (uiLanguage === 'zh-CN' ? line : localizedText(line).replace(/）：/g, '): ').replace(/：/g, ': ')) : line)).join('\n')
+    : v);
+  return api.confirm({
+    ...opts,
+    title: t(opts.title),
+    message: t(opts.message),
+    detail: t(opts.detail),
+    okLabel: t(opts.okLabel),
+    buttons: Array.isArray(opts.buttons) ? opts.buttons.map(t) : opts.buttons,
+  });
 }
 
 let languageObserver = null;
@@ -3136,7 +3179,7 @@ function bindSettings() {
     $('btnGrowData').addEventListener('click', async () => {
       const gb = Number($('setDataGB').value) || 0;
       if (!gb) { toast({ title: '先选一个容量', body: '「自动」表示由软件按磁盘余量决定，不需要扩容', type: 'info' }); return; }
-      const { response } = await api.confirm({
+      const { response } = await confirmLocalized({
         title: '立刻把安卓数据分区扩容？',
         message: `将把 /data 调整为 ${gb} GB（就地扩容，已装应用和存档都会保留）。`,
         detail: '扩容需要先关掉正在运行的安卓应用，完成后下次打开应用会重新引导，约多花十几秒。',
@@ -3152,7 +3195,7 @@ function bindSettings() {
       if (r && !r.ok && r.needsReset) {
         // 快速启动的差量盘挡着：就地扩容做不到，只能按新容量重建 /data。
         // 这是明确的数据丢失操作，必须单独再确认一次。
-        const again = await api.confirm({
+        const again = await confirmLocalized({
           title: '需要重置安卓数据才能扩容',
           message: `安卓正在使用快速启动差量盘，就地扩容改不到它。要拿到 ${gb} GB 空间，必须按新容量重建 /data。`,
           detail: '重建会清空已安装的应用与存档（模拟器本身和镜像不受影响）。确定继续吗？',
@@ -3387,7 +3430,7 @@ function bindSettings() {
     const btn = $('btnResetData');
     btn.disabled = true;
     try {
-      const first = await api.confirm({
+      const first = await confirmLocalized({
         type: 'warning',
         title: '重置安卓数据？',
         message: '这会把安卓系统还原成「刚装好系统」的干净状态：',
@@ -3400,7 +3443,7 @@ function bindSettings() {
         cancelId: 0,
       });
       if (!first || first.response !== 1) return;
-      const second = await api.confirm({
+      const second = await confirmLocalized({
         type: 'warning',
         title: '再确认一次',
         message: '已安装的 app 和它们的数据将被永久删除，确定要重置吗？',
@@ -3436,7 +3479,7 @@ function bindSettings() {
     const btn = $('btnRepairNetwork');
     btn.disabled = true;
     try {
-      const ok = await api.confirm({
+      const ok = await confirmLocalized({
         type: 'warning',
         title: '修复虚拟机网络？',
         message: '应用里需要联网的页面一直黑屏/转圈，通常是安卓虚拟机没有网络。',
@@ -3489,7 +3532,7 @@ function bindSettings() {
       const mb = Math.round((r.totalBytes || 0) / 1048576);
       const lines = items.slice(0, 8).map((x) => `• ${x.note}：${x.path}`);
       if (items.length > 8) lines.push(`…另有 ${items.length - 8} 项`);
-      const ok = await api.confirm({
+      const ok = await confirmLocalized({
         type: 'warning',
         title: '清理旧版本残留？',
         message: `找到 ${items.length} 项残留，约 ${mb} MB：`,
